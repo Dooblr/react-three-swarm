@@ -15,7 +15,7 @@ interface GameState {
 export const useGameStore = create<GameState>((set) => ({
   isPaused: false,
   score: 0,
-  fireRate: 0.5,
+  fireRate: 1,
   powerupsCollected: 0,
   setPaused: (paused) => set({ isPaused: paused }),
   setScore: (score) => set((state) => ({ 
@@ -27,7 +27,7 @@ export const useGameStore = create<GameState>((set) => ({
     const newPowerups = state.powerupsCollected + 1;
     return { 
       powerupsCollected: newPowerups,
-      fireRate: 0.5 * Math.pow(2, newPowerups / 2) // Double fire rate for each powerup
+      fireRate: state.fireRate * 1.2  // Increase fire rate by 20%
     };
   })
 })) 

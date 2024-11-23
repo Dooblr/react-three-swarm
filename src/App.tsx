@@ -23,17 +23,6 @@ const App = () => {
   const MIN_ZOOM = 5;
   const MAX_ZOOM = 15;
 
-  useEffect(()=>{
-    setTimeout(()=>{
-      useGameStore.setState({ fireRate: 2 });
-      console.log('updated fire rate');
-    }, 1000);
-    setTimeout(()=>{
-      useGameStore.setState({ fireRate: 0.5 });
-      console.log('updated fire rate');
-    }, 5000);
-  },[]);
-
   useEffect(() => {
     // Scene setup
     const scene = new THREE.Scene()
@@ -242,10 +231,10 @@ const App = () => {
 
     // Auto-shooting interval
     let shootingInterval: ReturnType<typeof setInterval>;
-    const BASE_FIRE_RATE = 500; // Base fire rate in milliseconds
+    const BASE_FIRE_RATE = 1000; // Base fire rate of 1 shot per second (1000ms)
     const updateShootingInterval = () => {
       if (shootingInterval) clearInterval(shootingInterval);
-      const actualFireRate = BASE_FIRE_RATE / useGameStore.getState().fireRate;
+      const actualFireRate = BASE_FIRE_RATE / useGameStore.getState().fireRate * 2;
       shootingInterval = setInterval(createProjectile, actualFireRate);
     };
     updateShootingInterval();
