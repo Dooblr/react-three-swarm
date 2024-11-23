@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { useGameStore } from './store/gameStore'
+import powerupSound from './assets/powerup.wav'
 
 export class PowerUpManager {
   private powerUps: THREE.Mesh[] = []
@@ -8,10 +9,14 @@ export class PowerUpManager {
   private lastSpawnTime: number = 0
   private spawnRate: number = 10000 // 10 seconds
   private duration: number = 300000 // 5 minutes (300,000 ms)
+  private powerupAudio: HTMLAudioElement
 
   constructor(scene: THREE.Scene, levelBounds: number) {
     this.scene = scene
     this.levelBounds = levelBounds
+    // Initialize audio
+    this.powerupAudio = new Audio(powerupSound)
+    this.powerupAudio.volume = 0.3 // Adjust volume as needed
   }
 
   createPowerUp(): THREE.Mesh {
@@ -64,8 +69,14 @@ export class PowerUpManager {
 
       // Check for player collision
       if (playerPosition.distanceTo(powerUp.position) < 1) {
+        // Play sound effect
+        this.powerupAudio.currentTime = 0 // Reset audio to start
+        this.powerupAudio.play().catch(error => {
+          console.log("Audio play failed:", error)
+        })
+
         // Increment powerups and automatically update fire rate
-        useGameStore.getState().incrementPowerups();
+        useGameStore.getState().incrementPowerups()
 
         // Remove power-up
         this.scene.remove(powerUp)
@@ -79,5 +90,8 @@ export class PowerUpManager {
       this.scene.remove(powerUp)
     })
     this.powerUps = []
+    // Clean up audio
+    this.powerupAudio.pause()
+    this.powerupAudio = null
   }
 } 
