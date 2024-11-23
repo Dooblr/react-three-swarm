@@ -92,6 +92,8 @@ export class PowerUpManager {
     this.powerUps = []
     // Clean up audio
     this.powerupAudio.pause()
-    this.powerupAudio = null
+    this.powerupAudio.src = '' // Clear the source instead of nulling
+    const healthDisplay = document.getElementById('health-display')
+    healthDisplay?.remove()
   }
 } 

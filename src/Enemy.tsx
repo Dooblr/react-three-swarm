@@ -187,8 +187,6 @@ export class EnemyManager {
     this.enemies = []
     // Clean up audio
     this.hitAudio.pause()
-    this.hitAudio = null
     this.deathAudio.pause()
-    this.deathAudio = null
   }
 }
