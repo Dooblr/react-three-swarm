@@ -1,5 +1,7 @@
 import * as THREE from "three"
 import { useGameStore } from "./store/gameStore"
+import enemyHitSound from './assets/enemy_hit.wav'
+import enemyDeathSound from './assets/enemy_death.wav'
 
 export interface Enemy {
   mesh: THREE.Mesh
@@ -13,6 +15,8 @@ export class EnemyManager {
   private levelBounds: number
   private lastSpawnTime: number = 0
   private spawnRate: number = 3000 // 3 seconds
+  private hitAudio: HTMLAudioElement
+  private deathAudio: HTMLAudioElement
 
   // Add time tracking for wobble
   private wobbleTime: number = 0
@@ -20,6 +24,11 @@ export class EnemyManager {
   constructor(scene: THREE.Scene, levelBounds: number) {
     this.scene = scene
     this.levelBounds = levelBounds
+    // Initialize audio
+    this.hitAudio = new Audio(enemyHitSound)
+    this.hitAudio.volume = 0.3
+    this.deathAudio = new Audio(enemyDeathSound)
+    this.deathAudio.volume = 0.4 // Slightly louder than hit sound
   }
 
   createEnemy(): Enemy {
@@ -130,16 +139,13 @@ export class EnemyManager {
       if (distance < 1) { // Collision detected
         enemy.health--
 
-        // Change color based on health
-        const healthColor = new THREE.Color(
-          1 - enemy.health / 3, // More red as health decreases
-          enemy.health / 3, // Less green as health decreases
-          0
-        )
-        ;(enemy.mesh.material as THREE.MeshStandardMaterial).color = healthColor
-
-        // If enemy is destroyed (health <= 0)
         if (enemy.health <= 0) {
+          // Play death sound
+          this.deathAudio.currentTime = 0
+          this.deathAudio.play().catch(error => {
+            console.log("Audio play failed:", error)
+          })
+          
           // Remove enemy from scene and array
           this.scene.remove(enemy.mesh)
           this.enemies.splice(i, 1)
@@ -149,8 +155,22 @@ export class EnemyManager {
           gameStore.incrementScore()
           
           return true
+        } else {
+          // Play hit sound only if enemy survives
+          this.hitAudio.currentTime = 0
+          this.hitAudio.play().catch(error => {
+            console.log("Audio play failed:", error)
+          })
+
+          // Change color based on health
+          const healthColor = new THREE.Color(
+            1 - enemy.health / 3, // More red as health decreases
+            enemy.health / 3, // Less green as health decreases
+            0
+          )
+          ;(enemy.mesh.material as THREE.MeshStandardMaterial).color = healthColor
         }
-        return true // Hit but not destroyed
+        return true // Hit detected
       }
     }
     return false // No collision
@@ -165,5 +185,10 @@ export class EnemyManager {
       this.scene.remove(enemy.mesh)
     })
     this.enemies = []
+    // Clean up audio
+    this.hitAudio.pause()
+    this.hitAudio = null
+    this.deathAudio.pause()
+    this.deathAudio = null
   }
 }
