@@ -21,6 +21,26 @@ body,
     font-size: 18px;
     font-weight: bold;
   }
+
+  .pause-button {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.7);
+    }
+  }
 }
 
 .audio-prompt {

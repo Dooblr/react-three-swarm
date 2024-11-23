@@ -4,7 +4,7 @@ import "./App.scss"
 import { EnemyManager } from "./Enemy"
 import { PowerUpManager } from "./PowerUp.tsx"
 import { useGameStore } from "./store/gameStore"
-import musicLoop from './assets/music_loop.wav'
+import musicLoop from './assets/music_loop2.wav'
 
 const setupBackgroundMusic = () => {
   const audio = new Audio(musicLoop);
@@ -191,8 +191,22 @@ const App = () => {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase()
-      if (key in keys) {
-        keys[key as keyof typeof keys] = true
+      
+      // Handle pause with Escape key only
+      if (key === 'escape') {
+        setIsPaused(prev => {
+          const newPauseState = !prev;
+          useGameStore.getState().setPaused(newPauseState);
+          return newPauseState;
+        });
+        return;
+      }
+
+      // Only process other keys if game is not paused
+      if (!useGameStore.getState().isPaused) {
+        if (key in keys) {
+          keys[key as keyof typeof keys] = true
+        }
       }
     }
 
@@ -219,7 +233,7 @@ const App = () => {
 
     // Shooting system
     const createProjectile = () => {
-      if (!isPaused) {
+      if (!useGameStore.getState().isPaused) {
         const projectileGeometry = new THREE.SphereGeometry(0.2);
         const projectileMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
         const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
@@ -246,7 +260,7 @@ const App = () => {
     const BASE_FIRE_RATE = 1000; // Base fire rate of 1 shot per second (1000ms)
     const updateShootingInterval = () => {
       if (shootingInterval) clearInterval(shootingInterval);
-      const actualFireRate = BASE_FIRE_RATE / useGameStore.getState().fireRate * 2;
+      const actualFireRate = BASE_FIRE_RATE / useGameStore.getState().fireRate;
       shootingInterval = setInterval(createProjectile, actualFireRate);
     };
     updateShootingInterval();
@@ -272,7 +286,9 @@ const App = () => {
     window.addEventListener('wheel', handleWheel);
 
     const animate = () => {
-      if (!isPaused) {  // Only run game logic if not paused
+      const gameState = useGameStore.getState();
+      
+      if (!gameState.isPaused) {
         // Handle rotation
         if (keys.a || keys.arrowleft) {
           cube.rotation.y += movement.rotationSpeed
@@ -425,7 +441,8 @@ const App = () => {
 
   useEffect(() => {
     if (audioRef.current) {
-      if (isPaused) {
+      const gameState = useGameStore.getState();
+      if (gameState.isPaused) {
         audioRef.current.pause();
       } else {
         audioRef.current.play().catch(error => {
@@ -435,11 +452,23 @@ const App = () => {
     }
   }, [isPaused]);
 
+  const handlePauseClick = () => {
+    const newPauseState = !isPaused;
+    setIsPaused(newPauseState);
+    useGameStore.getState().setPaused(newPauseState);
+  };
+
   return (
     <>
       <div ref={mountRef} />
       <div className="hud">
         <div className="score">Score: {score}</div>
+        <button 
+          className="pause-button" 
+          onClick={handlePauseClick}
+        >
+          {isPaused ? "Resume" : "Pause"}
+        </button>
       </div>
     </>
   )
