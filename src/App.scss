@@ -1,0 +1,24 @@
+body,
+#root {
+  margin: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.hud {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 100;
+
+  .score {
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    font-weight: bold;
+  }
+}
