@@ -4,6 +4,14 @@ import "./App.scss"
 import { EnemyManager } from "./Enemy"
 import { PowerUpManager } from "./PowerUp.tsx"
 import { useGameStore } from "./store/gameStore"
+import musicLoop from './assets/music_loop.wav'
+
+const setupBackgroundMusic = () => {
+  const audio = new Audio(musicLoop);
+  audio.loop = true;
+  audio.volume = 0.5; // Adjust volume as needed
+  return audio;
+};
 
 const App = () => {
   const mountRef = useRef<HTMLDivElement>(null)
@@ -23,7 +31,11 @@ const App = () => {
   const MIN_ZOOM = 5;
   const MAX_ZOOM = 15;
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   useEffect(() => {
+    audioRef.current = setupBackgroundMusic();
+
     // Scene setup
     const scene = new THREE.Scene()
     // Add gradient background
@@ -404,8 +416,24 @@ const App = () => {
       window.removeEventListener('keyup', handleKeyUp)
       window.removeEventListener('wheel', handleWheel);
       mountRef.current?.removeChild(renderer.domElement)
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     }
   }, [])
+
+  useEffect(() => {
+    if (audioRef.current) {
+      if (isPaused) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play().catch(error => {
+          console.log("Audio autoplay failed:", error);
+        });
+      }
+    }
+  }, [isPaused]);
 
   return (
     <>

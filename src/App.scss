@@ -22,3 +22,16 @@ body,
     font-weight: bold;
   }
 }
+
+.audio-prompt {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 4px;
+  cursor: pointer;
+  z-index: 1000;
+}
