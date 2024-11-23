@@ -36,6 +36,18 @@ body,
     cursor: pointer;
     border: none;
     transition: background-color 0.2s;
+    user-select: none;
+    pointer-events: auto;
+    outline: none !important;
+    
+    // Prevent focus styles
+    &:focus,
+    &:focus-visible,
+    &:focus-within {
+      outline: none !important;
+      box-shadow: none !important;
+      border: none !important;
+    }
 
     &:hover {
       background-color: rgba(0, 0, 0, 0.7);

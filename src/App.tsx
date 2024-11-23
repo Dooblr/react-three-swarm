@@ -185,8 +185,7 @@ const App = () => {
       arrowup: false,
       arrowdown: false,
       arrowleft: false,
-      arrowright: false,
-      ' ': false  // space key
+      arrowright: false
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -202,18 +201,38 @@ const App = () => {
         return;
       }
 
-      // Only process other keys if game is not paused
+      // Only process keys if game is not paused
       if (!useGameStore.getState().isPaused) {
+        // Special handling for spacebar jump
+        if (key === ' ') {
+          if (!playerState.isJumping && playerState.jumpsAvailable > 0) {
+            movement.verticalVelocity = movement.jumpForce;
+            playerState.jumpsAvailable--;
+            playerState.isJumping = true;
+            movement.isGrounded = false;
+          }
+          return;
+        }
+
+        // Handle other movement keys
         if (key in keys) {
-          keys[key as keyof typeof keys] = true
+          keys[key as keyof typeof keys] = true;
         }
       }
     }
 
     const handleKeyUp = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase()
+      
+      // Handle spacebar release
+      if (key === ' ') {
+        playerState.isJumping = false;
+        return;
+      }
+
+      // Handle other keys
       if (key in keys) {
-        keys[key as keyof typeof keys] = false
+        keys[key as keyof typeof keys] = false;
       }
     }
 
@@ -291,22 +310,10 @@ const App = () => {
       if (!gameState.isPaused) {
         // Handle rotation
         if (keys.a || keys.arrowleft) {
-          cube.rotation.y += movement.rotationSpeed
+          cube.rotation.y += movement.rotationSpeed;
         }
         if (keys.d || keys.arrowright) {
-          cube.rotation.y -= movement.rotationSpeed
-        }
-
-        // Handle jumping
-        if (keys[' ']) {
-          if (!playerState.isJumping && playerState.jumpsAvailable > 0) {
-            movement.verticalVelocity = movement.jumpForce;
-            playerState.jumpsAvailable--;
-            playerState.isJumping = true;
-            movement.isGrounded = false;
-          }
-        } else {
-          playerState.isJumping = false;
+          cube.rotation.y -= movement.rotationSpeed;
         }
 
         // Apply gravity and vertical movement
@@ -314,11 +321,12 @@ const App = () => {
         cube.position.y += movement.verticalVelocity;
 
         // Ground collision
-        if (cube.position.y <= 0.5) { // 0.5 is half the cube height
+        if (cube.position.y <= 0.5) {
           cube.position.y = 0.5;
           movement.verticalVelocity = 0;
           movement.isGrounded = true;
-          playerState.jumpsAvailable = 2;  // Reset jumps when touching ground
+          playerState.jumpsAvailable = 2;
+          playerState.isJumping = false;
         }
 
         // Handle forward/backward movement
@@ -452,10 +460,13 @@ const App = () => {
     }
   }, [isPaused]);
 
-  const handlePauseClick = () => {
-    const newPauseState = !isPaused;
-    setIsPaused(newPauseState);
-    useGameStore.getState().setPaused(newPauseState);
+  const handlePauseClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Only process if it's a mouse click (not a keyboard or other event)
+    if (e.type === 'click') {
+      const newPauseState = !isPaused;
+      setIsPaused(newPauseState);
+      useGameStore.getState().setPaused(newPauseState);
+    }
   };
 
   return (
@@ -466,6 +477,11 @@ const App = () => {
         <button 
           className="pause-button" 
           onClick={handlePauseClick}
+          onKeyDown={(e) => e.preventDefault()}
+          onKeyUp={(e) => e.preventDefault()}
+          onKeyPress={(e) => e.preventDefault()}
+          tabIndex={-1}
+          aria-hidden="true"
         >
           {isPaused ? "Resume" : "Pause"}
         </button>
