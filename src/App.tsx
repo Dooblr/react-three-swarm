@@ -15,17 +15,18 @@ const setupBackgroundMusic = () => {
 
 const App = () => {
   const mountRef = useRef<HTMLDivElement>(null)
-  const [score, setScore] = useState(0)
   let enemyManager: EnemyManager;
   let powerUpManager: PowerUpManager;
   
+  // Subscribe to the score from Zustand
+  const score = useGameStore(state => state.score);
+  const [isPaused, setIsPaused] = useState(false);
+
   const playerState = {
     velocity: 0,
     jumpsAvailable: 2,  // Start with 2 jumps
     isJumping: false
   }
-
-  const [isPaused, setIsPaused] = useState(false);
 
   const cameraDistanceRef = useRef(10); // Default camera distance
   const MIN_ZOOM = 5;
@@ -416,7 +417,6 @@ const App = () => {
           if (enemyManager.handleProjectileCollision(projectile)) {
             scene.remove(projectile);
             projectiles.splice(i, 1);
-            setScore(prevScore => prevScore + 1);
           }
         }
 

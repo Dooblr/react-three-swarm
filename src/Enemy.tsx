@@ -127,8 +127,7 @@ export class EnemyManager {
       const enemy = this.enemies[i]
       const distance = projectile.position.distanceTo(enemy.mesh.position)
 
-      if (distance < 1) {
-        // Collision threshold
+      if (distance < 1) { // Collision detected
         enemy.health--
 
         // Change color based on health
@@ -139,17 +138,22 @@ export class EnemyManager {
         )
         ;(enemy.mesh.material as THREE.MeshStandardMaterial).color = healthColor
 
-        // Remove enemy if dead
+        // If enemy is destroyed (health <= 0)
         if (enemy.health <= 0) {
+          // Remove enemy from scene and array
           this.scene.remove(enemy.mesh)
           this.enemies.splice(i, 1)
-          useGameStore.getState().incrementScore()
-          return true // Return true if enemy was destroyed
+          
+          // Increment score using Zustand store
+          const gameStore = useGameStore.getState()
+          gameStore.incrementScore()
+          
+          return true
         }
-        return true // Return true for hit
+        return true // Hit but not destroyed
       }
     }
-    return false // Return false if no collision
+    return false // No collision
   }
 
   getEnemies(): Enemy[] {
