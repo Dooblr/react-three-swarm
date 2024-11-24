@@ -4,14 +4,58 @@ import "./App.scss"
 import { EnemyManager } from "./Enemy"
 import { PowerUpManager } from "./PowerUp.tsx"
 import { useGameStore } from "./store/gameStore"
-import musicLoop from './assets/music_loop2.wav'
+import musicLoop from './assets/music_loop.wav'
 import { HealthPickupManager } from "./HealthPickup"
 
 const setupBackgroundMusic = () => {
-  const audio = new Audio(musicLoop);
-  audio.loop = true;
-  audio.volume = 0.5; // Adjust volume as needed
-  return audio;
+  // Create audio context
+  const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+  const audioContext = new AudioContext();
+  
+  // Create a buffer source for looping
+  const createBufferSource = async () => {
+    const response = await fetch(musicLoop);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.loop = true;
+    
+    // Create gain node for volume control
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = 0.5; // Set volume to 0.5
+    
+    // Connect nodes
+    source.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    return source;
+  };
+
+  // Initialize and start playback
+  let source: AudioBufferSourceNode | null = null;
+  createBufferSource().then(newSource => {
+    source = newSource;
+    source.start(0);
+  });
+
+  // Return an object with controls
+  return {
+    pause() {
+      audioContext.suspend();
+    },
+    async play() {
+      return audioContext.resume();
+    },
+    cleanup() {
+      if (source) {
+        source.stop();
+        source.disconnect();
+      }
+      audioContext.close();
+    }
+  };
 };
 
 const App = () => {
@@ -35,7 +79,7 @@ const App = () => {
   const MIN_ZOOM = 5;
   const MAX_ZOOM = 15;
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<ReturnType<typeof setupBackgroundMusic> | null>(null);
 
   useEffect(() => {
     audioRef.current = setupBackgroundMusic();
@@ -464,7 +508,7 @@ const App = () => {
         audioRef.current.pause();
       } else {
         audioRef.current.play().catch(error => {
-          console.log("Audio autoplay failed:", error);
+          console.log("Audio playback failed:", error);
         });
       }
     }
