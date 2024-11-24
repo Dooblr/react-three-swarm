@@ -171,6 +171,41 @@ const App = () => {
     plane.receiveShadow = true
     scene.add(plane)
 
+    // Create random platforms
+    const createPlatforms = () => {
+        const platforms: THREE.Mesh[] = [];
+        const numPlatforms = 20; // Adjust number of platforms
+        
+        const boxGeometry = new THREE.BoxGeometry(3, 2, 3);
+        const boxMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x808080,
+            roughness: 0.7,
+            metalness: 0.3
+        });
+
+        for (let i = 0; i < numPlatforms; i++) {
+            const platform = new THREE.Mesh(boxGeometry, boxMaterial);
+            
+            // Random position within bounds
+            platform.position.x = (Math.random() - 0.5) * 90; // Keep away from edges
+            platform.position.z = (Math.random() - 0.5) * 90;
+            platform.position.y = 1; // Height of platform
+            
+            // Random rotation for variety
+            platform.rotation.y = Math.random() * Math.PI * 2;
+            
+            platform.castShadow = true;
+            platform.receiveShadow = true;
+            
+            scene.add(platform);
+            platforms.push(platform);
+        }
+        
+        return platforms;
+    };
+
+    const platforms = createPlatforms();
+
     // Create player cube
     const cubeGeometry = new THREE.BoxGeometry(1, 1, 1)
     const cubeMaterial = new THREE.MeshStandardMaterial({ 
@@ -287,8 +322,8 @@ const App = () => {
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
 
-    // Initialize enemy manager
-    enemyManager = new EnemyManager(scene, 50);
+    // Initialize enemy manager with platforms
+    enemyManager = new EnemyManager(scene, 50, platforms);
 
     // Initialize powerUpManager
     powerUpManager = new PowerUpManager(scene, 50);
@@ -371,13 +406,75 @@ const App = () => {
         movement.verticalVelocity -= movement.gravity;
         cube.position.y += movement.verticalVelocity;
 
-        // Ground collision
-        if (cube.position.y <= 0.5) {
-          cube.position.y = 0.5;
-          movement.verticalVelocity = 0;
-          movement.isGrounded = true;
-          playerState.jumpsAvailable = 2;
-          playerState.isJumping = false;
+        // Ground and platform collision
+        let isOnPlatform = false;
+        const playerRadius = 0.5; // Half of player's width
+
+        // Store previous position for collision resolution
+        const previousPosition = cube.position.clone();
+
+        // Check platform collisions
+        platforms.forEach(platform => {
+            const platformWidth = 1.5;  // Half of platform's width (3/2)
+            const platformDepth = 1.5;  // Half of platform's depth (3/2)
+            const platformHeight = 1;    // Half of platform's height (2/2)
+            
+            // Calculate distances
+            const dx = cube.position.x - platform.position.x;
+            const dz = cube.position.z - platform.position.z;
+            const dy = cube.position.y - platform.position.y;
+            
+            // Check if within collision range
+            if (Math.abs(dx) < (platformWidth + playerRadius) && 
+                Math.abs(dz) < (platformDepth + playerRadius) && 
+                Math.abs(dy) < (platformHeight + playerRadius)) {
+                
+                // Find the overlap on each axis
+                const overlapX = (platformWidth + playerRadius) - Math.abs(dx);
+                const overlapZ = (platformDepth + playerRadius) - Math.abs(dz);
+                const overlapY = (platformHeight + playerRadius) - Math.abs(dy);
+                
+                // Find the smallest overlap to determine which direction to push
+                if (overlapX < overlapY && overlapX < overlapZ) {
+                    // X-axis collision
+                    if (dx > 0) {
+                        cube.position.x = platform.position.x + platformWidth + playerRadius;
+                    } else {
+                        cube.position.x = platform.position.x - platformWidth - playerRadius;
+                    }
+                } else if (overlapZ < overlapY && overlapZ < overlapX) {
+                    // Z-axis collision
+                    if (dz > 0) {
+                        cube.position.z = platform.position.z + platformDepth + playerRadius;
+                    } else {
+                        cube.position.z = platform.position.z - platformDepth - playerRadius;
+                    }
+                } else {
+                    // Y-axis collision
+                    if (dy > 0) {
+                        // Landing on top
+                        cube.position.y = platform.position.y + platformHeight + playerRadius;
+                        movement.verticalVelocity = 0;
+                        movement.isGrounded = true;
+                        playerState.jumpsAvailable = 2;
+                        playerState.isJumping = false;
+                        isOnPlatform = true;
+                    } else {
+                        // Hitting from below
+                        cube.position.y = platform.position.y - platformHeight - playerRadius;
+                        movement.verticalVelocity = 0;
+                    }
+                }
+            }
+        });
+
+        // Ground collision (only if not on platform)
+        if (!isOnPlatform && cube.position.y <= 0.5) {
+            cube.position.y = 0.5;
+            movement.verticalVelocity = 0;
+            movement.isGrounded = true;
+            playerState.jumpsAvailable = 2;
+            playerState.isJumping = false;
         }
 
         // Handle forward/backward movement

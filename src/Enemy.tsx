@@ -17,13 +17,17 @@ export class EnemyManager {
   private spawnRate: number = 3000 // 3 seconds
   private hitAudio: HTMLAudioElement
   private deathAudio: HTMLAudioElement
+  private platforms: THREE.Mesh[]
 
   // Add time tracking for wobble
   private wobbleTime: number = 0
+  private lastPlayerCollisionTime: number = 0
+  private collisionCooldown: number = 1000  // 1 second cooldown between hits
 
-  constructor(scene: THREE.Scene, levelBounds: number) {
+  constructor(scene: THREE.Scene, levelBounds: number, platforms: THREE.Mesh[]) {
     this.scene = scene
     this.levelBounds = levelBounds
+    this.platforms = platforms
     // Initialize audio
     this.hitAudio = new Audio(enemyHitSound)
     this.hitAudio.volume = 0.3
@@ -107,44 +111,82 @@ export class EnemyManager {
 
     // Update enemies
     const enemySpeed = 0.1
-    const playerCollisionRadius = 1 // Collision distance with player
+    const enemyRadius = 0.5 // Enemy collision radius
+    const playerCollisionRadius = 1
 
     this.enemies.forEach((enemy, index) => {
-      const direction = new THREE.Vector3()
-        .subVectors(playerPosition, enemy.mesh.position)
-        .normalize()
+        // Store previous position for collision resolution
+        const previousPosition = enemy.mesh.position.clone()
 
-      // Check collision with player
-      const distanceToPlayer = enemy.mesh.position.distanceTo(playerPosition)
-      if (distanceToPlayer < playerCollisionRadius) {
-        // Get current game state
-        const gameState = useGameStore.getState();
-        
-        // Decrement health and get new health value
-        useGameStore.getState().decrementHealth();
-        const newHealth = useGameStore.getState().health;
-        
-        console.log(`Enemy collision! Player health: ${newHealth}`);
-        
-        // Remove the enemy after collision
-        this.scene.remove(enemy.mesh)
-        this.enemies.splice(index, 1)
-        return // Skip rest of update for this enemy
-      }
+        // Calculate direction to player
+        const direction = new THREE.Vector3()
+            .subVectors(playerPosition, enemy.mesh.position)
+            .normalize()
 
-      // Existing wobble and movement code
-      const wobbleAmount = 1.2
-      const wobbleFrequency = 4
-      
-      const offsetX = Math.sin(this.wobbleTime * wobbleFrequency + enemy.mesh.position.x) * wobbleAmount
-      const offsetZ = Math.cos(this.wobbleTime * wobbleFrequency + enemy.mesh.position.z) * wobbleAmount
-      
-      enemy.mesh.position.add(direction.multiplyScalar(enemySpeed))
-      enemy.mesh.position.x += offsetX * deltaTime
-      enemy.mesh.position.z += offsetZ * deltaTime
+        // Move enemy
+        enemy.mesh.position.add(direction.multiplyScalar(enemySpeed))
 
-      enemy.mesh.rotation.x = Math.sin(this.wobbleTime * wobbleFrequency) * 0.3
-      enemy.mesh.rotation.z = Math.cos(this.wobbleTime * wobbleFrequency) * 0.3
+        // Check collisions with platforms
+        this.platforms.forEach(platform => {
+            const platformWidth = 1.5  // Half of platform's width
+            const platformDepth = 1.5  // Half of platform's depth
+            const platformHeight = 1    // Half of platform's height
+
+            const dx = enemy.mesh.position.x - platform.position.x
+            const dz = enemy.mesh.position.z - platform.position.z
+            const dy = enemy.mesh.position.y - platform.position.y
+
+            // Check if within collision range
+            if (Math.abs(dx) < (platformWidth + enemyRadius) && 
+                Math.abs(dz) < (platformDepth + enemyRadius) && 
+                Math.abs(dy) < (platformHeight + enemyRadius)) {
+                
+                // Find the overlap on each axis
+                const overlapX = (platformWidth + enemyRadius) - Math.abs(dx)
+                const overlapZ = (platformDepth + enemyRadius) - Math.abs(dz)
+                
+                // Push enemy out horizontally (ignore vertical collision)
+                if (overlapX < overlapZ) {
+                    // X-axis collision
+                    enemy.mesh.position.x = dx > 0 ? 
+                        platform.position.x + platformWidth + enemyRadius :
+                        platform.position.x - platformWidth - enemyRadius
+                } else {
+                    // Z-axis collision
+                    enemy.mesh.position.z = dz > 0 ? 
+                        platform.position.z + platformDepth + enemyRadius :
+                        platform.position.z - platformDepth - enemyRadius
+                }
+            }
+        })
+
+        // Existing wobble effect
+        const wobbleAmount = 1.2
+        const wobbleFrequency = 4
+        
+        const offsetX = Math.sin(this.wobbleTime * wobbleFrequency + enemy.mesh.position.x) * wobbleAmount
+        const offsetZ = Math.cos(this.wobbleTime * wobbleFrequency + enemy.mesh.position.z) * wobbleAmount
+        
+        enemy.mesh.position.x += offsetX * deltaTime
+        enemy.mesh.position.z += offsetZ * deltaTime
+
+        // Check player collision after all movement
+        const distanceToPlayer = enemy.mesh.position.distanceTo(playerPosition)
+        if (distanceToPlayer < playerCollisionRadius && 
+            now - this.lastPlayerCollisionTime > this.collisionCooldown) {
+            
+            useGameStore.getState().decrementHealth();
+            this.lastPlayerCollisionTime = now;
+            
+            // Remove the enemy after collision
+            this.scene.remove(enemy.mesh)
+            this.enemies.splice(index, 1)
+            return // Skip rest of update for this enemy
+        }
+
+        // Existing rotation code
+        enemy.mesh.rotation.x = Math.sin(this.wobbleTime * wobbleFrequency) * 0.3
+        enemy.mesh.rotation.z = Math.cos(this.wobbleTime * wobbleFrequency) * 0.3
     })
   }
 

@@ -85,8 +85,9 @@ export class HealthPickupManager {
           console.log("Audio play failed:", error)
         })
 
-        // Heal player
-        useGameStore.getState().setHealth(100)
+        // Get current health and add 10, capped at 100
+        const currentHealth = useGameStore.getState().health;
+        useGameStore.getState().setHealth(Math.min(currentHealth + 10, 100));
 
         // Remove pickup
         this.scene.remove(pickup)
