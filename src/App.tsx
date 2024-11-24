@@ -209,14 +209,39 @@ const App = () => {
     // Create player cube
     const cubeGeometry = new THREE.BoxGeometry(1, 1, 1)
     const cubeMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x888888,  // Metallic gray color
-      metalness: 0.9,   // Very metallic
-      roughness: 0.1    // Smooth surface for better reflections
+      color: 0x888888,
+      metalness: 0.9,
+      roughness: 0.1
     })
     const cube = new THREE.Mesh(cubeGeometry, cubeMaterial)
     cube.position.y = 0.5
-    cube.castShadow = true  // Enable shadow casting
+    cube.castShadow = true
     scene.add(cube)
+
+    // Add perimeter walls
+    const wallGeometry = new THREE.BoxGeometry(1, 3, 100) // Height of 3, length of 100
+    const wallMaterial = new THREE.MeshStandardMaterial({
+      color: 0x808080,
+      roughness: 0.7,
+      metalness: 0.3
+    })
+
+    // Create four walls
+    const walls = [
+      { position: [50, 1.5, 0], rotation: [0, 0, 0] },      // Right wall
+      { position: [-50, 1.5, 0], rotation: [0, 0, 0] },     // Left wall
+      { position: [0, 1.5, 50], rotation: [0, Math.PI / 2, 0] },  // Front wall
+      { position: [0, 1.5, -50], rotation: [0, Math.PI / 2, 0] }  // Back wall
+    ]
+
+    walls.forEach(({ position, rotation }) => {
+      const wall = new THREE.Mesh(wallGeometry, wallMaterial)
+      wall.position.set(position[0], position[1], position[2])
+      wall.rotation.set(rotation[0], rotation[1], rotation[2])
+      wall.castShadow = true
+      wall.receiveShadow = true
+      scene.add(wall)
+    })
 
     // Add orbiting light
     const orbitingLight = new THREE.DirectionalLight(0xffffff, 0.8)
@@ -491,26 +516,27 @@ const App = () => {
           }
         }
 
-        // Handle strafing movement
-        if (keys.q || keys.e) {
-          const strafeDirection = keys.e ? -1 : 1;
-          // Move perpendicular to facing direction
-          cube.position.x += Math.cos(cube.rotation.y) * movement.strafeSpeed * strafeDirection;
-          cube.position.z -= Math.sin(cube.rotation.y) * movement.strafeSpeed * strafeDirection;
-          
-          // Keep within bounds
-          cube.position.x = Math.max(-50, Math.min(50, cube.position.x));
-          cube.position.z = Math.max(-50, Math.min(50, cube.position.z));
-        }
-
         // Apply movement in facing direction
         if (movement.speed !== 0) {
           cube.position.x += Math.sin(cube.rotation.y) * movement.speed
           cube.position.z += Math.cos(cube.rotation.y) * movement.speed
 
-          // Keep within bounds
-          cube.position.x = Math.max(-50, Math.min(50, cube.position.x))
-          cube.position.z = Math.max(-50, Math.min(50, cube.position.z))
+          // Keep within bounds (adjusted for player size)
+          const boundaryLimit = 48.5 // Tighter boundary to prevent fence intersection
+          cube.position.x = Math.max(-boundaryLimit, Math.min(boundaryLimit, cube.position.x))
+          cube.position.z = Math.max(-boundaryLimit, Math.min(boundaryLimit, cube.position.z))
+        }
+
+        // Handle strafing movement with same boundary check
+        if (keys.q || keys.e) {
+          const strafeDirection = keys.e ? -1 : 1
+          cube.position.x += Math.cos(cube.rotation.y) * movement.strafeSpeed * strafeDirection
+          cube.position.z -= Math.sin(cube.rotation.y) * movement.strafeSpeed * strafeDirection
+          
+          // Keep within bounds (same tighter boundary)
+          const boundaryLimit = 48.5
+          cube.position.x = Math.max(-boundaryLimit, Math.min(boundaryLimit, cube.position.x))
+          cube.position.z = Math.max(-boundaryLimit, Math.min(boundaryLimit, cube.position.z))
         }
 
         // Update camera position with zoom
