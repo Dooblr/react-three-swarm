@@ -67,10 +67,10 @@ export class PowerUpManager {
       powerUp.rotation.y += powerUp.userData.rotationSpeed
       powerUp.position.y = 1 + Math.sin(now * 0.002 + powerUp.userData.floatOffset) * 0.2
 
-      // Check for player collision
-      if (playerPosition.distanceTo(powerUp.position) < 1) {
+      // Check for player collision with wider radius (changed from 1 to 2.5)
+      if (playerPosition.distanceTo(powerUp.position) < 2.5) {
         // Play sound effect
-        this.powerupAudio.currentTime = 0 // Reset audio to start
+        this.powerupAudio.currentTime = 0
         this.powerupAudio.play().catch(error => {
           console.log("Audio play failed:", error)
         })
