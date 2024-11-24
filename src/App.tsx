@@ -5,6 +5,7 @@ import { EnemyManager } from "./Enemy"
 import { PowerUpManager } from "./PowerUp.tsx"
 import { useGameStore } from "./store/gameStore"
 import musicLoop from './assets/music_loop2.wav'
+import { HealthPickupManager } from "./HealthPickup"
 
 const setupBackgroundMusic = () => {
   const audio = new Audio(musicLoop);
@@ -17,6 +18,7 @@ const App = () => {
   const mountRef = useRef<HTMLDivElement>(null)
   let enemyManager: EnemyManager;
   let powerUpManager: PowerUpManager;
+  let healthPickupManager: HealthPickupManager;
   
   // Subscribe to both score and health from Zustand
   const score = useGameStore(state => state.score);
@@ -247,6 +249,9 @@ const App = () => {
     // Initialize powerUpManager
     powerUpManager = new PowerUpManager(scene, 50);
 
+    // Initialize healthPickupManager
+    healthPickupManager = new HealthPickupManager(scene, 50);
+
     // Add projectile-related variables
     const projectiles: THREE.Mesh[] = [];
     const projectileSpeed = 0.5;
@@ -423,6 +428,9 @@ const App = () => {
 
         // Add powerUpManager update after enemy update
         powerUpManager.update(cube.position, 0.016);
+
+        // Add health pickup update after powerup update
+        healthPickupManager.update(cube.position, 0.016);
       }
 
       // Always render the scene, even when paused
@@ -437,6 +445,7 @@ const App = () => {
       unsubscribe();
       enemyManager.cleanup();
       powerUpManager.cleanup();
+      healthPickupManager.cleanup();
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
       window.removeEventListener('wheel', handleWheel);
