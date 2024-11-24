@@ -93,7 +93,5 @@ export class PowerUpManager {
     // Clean up audio
     this.powerupAudio.pause()
     this.powerupAudio.src = '' // Clear the source instead of nulling
-    const healthDisplay = document.getElementById('health-display')
-    healthDisplay?.remove()
   }
 } 

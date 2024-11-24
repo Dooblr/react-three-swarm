@@ -18,8 +18,9 @@ const App = () => {
   let enemyManager: EnemyManager;
   let powerUpManager: PowerUpManager;
   
-  // Subscribe to the score from Zustand
+  // Subscribe to both score and health from Zustand
   const score = useGameStore(state => state.score);
+  const health = useGameStore(state => state.health);
   const [isPaused, setIsPaused] = useState(false);
 
   const playerState = {
@@ -472,6 +473,13 @@ const App = () => {
   return (
     <>
       <div ref={mountRef} />
+      <div className="health-bar">
+        <div 
+          className="health-fill" 
+          style={{ width: `${health}%` }}
+        />
+        <div className="health-text">{health}</div>
+      </div>
       <div className="hud">
         <div className="score">Score: {score}</div>
         <button 

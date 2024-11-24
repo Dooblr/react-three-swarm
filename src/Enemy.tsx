@@ -107,27 +107,44 @@ export class EnemyManager {
 
     // Update enemies
     const enemySpeed = 0.1
-    this.enemies.forEach((enemy) => {
+    const playerCollisionRadius = 1 // Collision distance with player
+
+    this.enemies.forEach((enemy, index) => {
       const direction = new THREE.Vector3()
         .subVectors(playerPosition, enemy.mesh.position)
         .normalize()
 
-      // Increased wobble values
-      const wobbleAmount = 1.2     // Increased from 0.3
-      const wobbleFrequency = 4    // Increased from 2
+      // Check collision with player
+      const distanceToPlayer = enemy.mesh.position.distanceTo(playerPosition)
+      if (distanceToPlayer < playerCollisionRadius) {
+        // Get current game state
+        const gameState = useGameStore.getState();
+        
+        // Decrement health and get new health value
+        useGameStore.getState().decrementHealth();
+        const newHealth = useGameStore.getState().health;
+        
+        console.log(`Enemy collision! Player health: ${newHealth}`);
+        
+        // Remove the enemy after collision
+        this.scene.remove(enemy.mesh)
+        this.enemies.splice(index, 1)
+        return // Skip rest of update for this enemy
+      }
+
+      // Existing wobble and movement code
+      const wobbleAmount = 1.2
+      const wobbleFrequency = 4
       
-      // Create offset based on sine waves with more variation
       const offsetX = Math.sin(this.wobbleTime * wobbleFrequency + enemy.mesh.position.x) * wobbleAmount
       const offsetZ = Math.cos(this.wobbleTime * wobbleFrequency + enemy.mesh.position.z) * wobbleAmount
       
-      // Apply movement with wobble
       enemy.mesh.position.add(direction.multiplyScalar(enemySpeed))
       enemy.mesh.position.x += offsetX * deltaTime
       enemy.mesh.position.z += offsetZ * deltaTime
 
-      // Increased rotation wobble
-      enemy.mesh.rotation.x = Math.sin(this.wobbleTime * wobbleFrequency) * 0.3  // Increased from 0.1
-      enemy.mesh.rotation.z = Math.cos(this.wobbleTime * wobbleFrequency) * 0.3  // Increased from 0.1
+      enemy.mesh.rotation.x = Math.sin(this.wobbleTime * wobbleFrequency) * 0.3
+      enemy.mesh.rotation.z = Math.cos(this.wobbleTime * wobbleFrequency) * 0.3
     })
   }
 

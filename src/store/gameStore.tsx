@@ -5,11 +5,14 @@ interface GameState {
   score: number
   fireRate: number
   powerupsCollected: number
+  health: number
   setPaused: (paused: boolean) => void
   setScore: (score: number | ((prev: number) => number)) => void
   incrementScore: () => void
   setFireRate: (rate: number) => void
   incrementPowerups: () => void
+  setHealth: (health: number) => void
+  decrementHealth: () => void
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -17,6 +20,7 @@ export const useGameStore = create<GameState>((set) => ({
   score: 0,
   fireRate: 1,
   powerupsCollected: 0,
+  health: 100,
   setPaused: (paused) => set({ isPaused: paused }),
   setScore: (score) => set((state) => ({ 
     score: typeof score === 'function' ? score(state.score) : score 
@@ -29,5 +33,10 @@ export const useGameStore = create<GameState>((set) => ({
       powerupsCollected: newPowerups,
       fireRate: state.fireRate * 1.2  // Increase fire rate by 20%
     };
-  })
+  }),
+  setHealth: (health) => set({ health: Math.max(0, Math.min(100, health)) }),
+  decrementHealth: () => set((state) => {
+    const newHealth = Math.max(0, state.health - 10);
+    return { health: newHealth };
+  }),
 })) 
