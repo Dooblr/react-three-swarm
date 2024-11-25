@@ -12,6 +12,7 @@ interface GameState {
     powerup: number
     enemyHit: number
     enemyDeath: number
+    playerHit: number
   }
   setPaused: (paused: boolean) => void
   setScore: (score: number | ((prev: number) => number)) => void
@@ -34,7 +35,8 @@ export const useGameStore = create<GameState>((set) => ({
     bullet: 0.5,     // Bullet sound
     powerup: 0.3,    // Powerup/health pickup sound
     enemyHit: 0.15,   // Enemy hit sound
-    enemyDeath: 0.4  // Enemy death sound
+    enemyDeath: 0.4,  // Enemy death sound
+    playerHit: 0.4    // Player hit sound
   },
   setPaused: (paused) => set({ isPaused: paused }),
   setScore: (score) => set((state) => ({ 

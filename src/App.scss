@@ -118,10 +118,22 @@ body,
 
   .health-fill {
     height: 100%;
-    background: #00ff00;
+    background: #2ecc71;
     opacity: 0.5;
-    transition: width 0.3s ease;
+    transition: width 0.3s ease-out, background-color 0.3s ease-out;
     box-shadow: 0 0 10px #00ff00;
+
+    &.warning {
+      background-color: #f1c40f;
+    }
+
+    &.danger {
+      background-color: #e74c3c;
+    }
+
+    &.damage-flash {
+      animation: damage-flash 0.3s ease-out;
+    }
   }
 
   .health-text {
@@ -136,5 +148,15 @@ body,
     font-weight: bold;
     text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
     pointer-events: none;
+  }
+}
+
+@keyframes damage-flash {
+  0% {
+    background-color: #ff0000;
+    filter: brightness(1.5);
+  }
+  100% {
+    filter: brightness(1);
   }
 }

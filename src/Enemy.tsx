@@ -2,6 +2,7 @@ import * as THREE from "three"
 import { useGameStore } from "./store/gameStore"
 import enemyHitSound from './assets/enemy_hit.wav'
 import enemyDeathSound from './assets/enemy_death.wav'
+import playerHitSound from './assets/player_hit.wav'
 
 export interface Enemy {
   mesh: THREE.Mesh
@@ -17,22 +18,27 @@ export class EnemyManager {
   private spawnRate: number = 3000 // 3 seconds
   private hitAudio: HTMLAudioElement
   private deathAudio: HTMLAudioElement
+  private playerHitAudio: HTMLAudioElement
   private platforms: THREE.Mesh[]
+  private player: Player  // Add reference to player
 
   // Add time tracking for wobble
   private wobbleTime: number = 0
   private lastPlayerCollisionTime: number = 0
   private collisionCooldown: number = 1000  // 1 second cooldown between hits
 
-  constructor(scene: THREE.Scene, levelBounds: number, platforms: THREE.Mesh[]) {
+  constructor(scene: THREE.Scene, levelBounds: number, platforms: THREE.Mesh[], player: Player) {
     this.scene = scene
     this.levelBounds = levelBounds
     this.platforms = platforms
+    this.player = player  // Store player reference
     // Initialize audio
     this.hitAudio = new Audio(enemyHitSound)
     this.hitAudio.volume = useGameStore.getState().audioLevels.enemyHit
     this.deathAudio = new Audio(enemyDeathSound)
     this.deathAudio.volume = useGameStore.getState().audioLevels.enemyDeath
+    this.playerHitAudio = new Audio(playerHitSound)
+    this.playerHitAudio.volume = useGameStore.getState().audioLevels.playerHit
   }
 
   createEnemy(): Enemy {
@@ -170,18 +176,27 @@ export class EnemyManager {
         enemy.mesh.position.x += offsetX * deltaTime
         enemy.mesh.position.z += offsetZ * deltaTime
 
-        // Check player collision after all movement
+        // Check player collision
         const distanceToPlayer = enemy.mesh.position.distanceTo(playerPosition)
         if (distanceToPlayer < playerCollisionRadius && 
             now - this.lastPlayerCollisionTime > this.collisionCooldown) {
             
-            useGameStore.getState().decrementHealth();
-            this.lastPlayerCollisionTime = now;
+            // Play hit sound
+            this.playerHitAudio.currentTime = 0
+            this.playerHitAudio.play().catch(error => {
+                console.log("Audio play failed:", error)
+            })
+            
+            useGameStore.getState().decrementHealth()
+            this.lastPlayerCollisionTime = now
+            
+            // Trigger player damage flash
+            this.player.takeDamage()
             
             // Remove the enemy after collision
             this.scene.remove(enemy.mesh)
             this.enemies.splice(index, 1)
-            return // Skip rest of update for this enemy
+            return
         }
 
         // Existing rotation code
@@ -247,5 +262,7 @@ export class EnemyManager {
     // Clean up audio
     this.hitAudio.pause()
     this.deathAudio.pause()
+    this.playerHitAudio.pause()
+    this.playerHitAudio.src = ''
   }
 }

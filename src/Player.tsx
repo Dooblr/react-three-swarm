@@ -26,12 +26,15 @@ export class Player {
     movement: PlayerMovement
     state: PlayerState
     boundaryLimit: number = 48.5
+    private damageFlashTime: number = 0
+    private readonly FLASH_DURATION = 200 // milliseconds
+    private originalColor: number = 0x888888 // Store the original color
 
     constructor(scene: THREE.Scene) {
         // Create player cube
         const cubeGeometry = new THREE.BoxGeometry(1, 1, 1)
         const cubeMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x888888,
+            color: this.originalColor,
             metalness: 0.9,
             roughness: 0.1
         })
@@ -124,6 +127,16 @@ export class Player {
         platforms.forEach(platform => {
             this.handlePlatformCollision(platform, 0.5)
         })
+
+        // Handle damage flash
+        if (this.damageFlashTime > 0) {
+            const timeSinceFlash = Date.now() - this.damageFlashTime
+            if (timeSinceFlash > this.FLASH_DURATION) {
+                this.damageFlashTime = 0
+                const material = this.mesh.material as THREE.MeshStandardMaterial
+                material.color.setHex(this.originalColor) // Reset to original color
+            }
+        }
     }
 
     private handlePlatformCollision(platform: THREE.Mesh, playerRadius: number) {
@@ -192,5 +205,11 @@ export class Player {
 
     cleanup(scene: THREE.Scene) {
         scene.remove(this.mesh)
+    }
+
+    takeDamage() {
+        this.damageFlashTime = Date.now()
+        const material = this.mesh.material as THREE.MeshStandardMaterial
+        material.color.setHex(0xff0000) // Set to red
     }
 } 

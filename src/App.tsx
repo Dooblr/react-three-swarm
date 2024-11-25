@@ -84,6 +84,44 @@ const App = () => {
 
   const audioRef = useRef<ReturnType<typeof setupBackgroundMusic> | null>(null);
 
+  const getHealthBarClass = (health: number) => {
+    let classes = ['health-fill']
+    if (health <= 20) {
+      classes.push('danger')
+    } else if (health <= 50) {
+      classes.push('warning')
+    }
+    return classes.join(' ')
+  }
+
+  // Add ref for tracking last damage time
+  const lastDamageTime = useRef(0)
+  const DAMAGE_FLASH_DURATION = 300 // milliseconds
+
+  // Subscribe to health changes
+  useEffect(() => {
+    const unsubscribe = useGameStore.subscribe(
+      (state) => state.health,
+      (health, prevHealth) => {
+        if (health < prevHealth) {
+          // Health decreased, trigger damage effects
+          lastDamageTime.current = Date.now()
+          player?.takeDamage() // Flash the player red
+                    
+          // Add and remove flash class from health bar
+          const healthFill = document.querySelector('.health-fill')
+          if (healthFill) {
+            healthFill.classList.add('damage-flash')
+            setTimeout(() => {
+              healthFill.classList.remove('damage-flash')
+            }, DAMAGE_FLASH_DURATION)
+          }
+        }
+      }
+    )
+    return () => unsubscribe()
+  }, [])
+
   useEffect(() => {
     audioRef.current = setupBackgroundMusic();
 
@@ -209,8 +247,11 @@ const App = () => {
 
     const platforms = createPlatforms();
 
-    // Initialize player
-    player = new Player(scene);
+    // Initialize player first
+    player = new Player(scene)
+
+    // Initialize enemy manager with player reference
+    enemyManager = new EnemyManager(scene, 50, platforms, player)
 
     // Add perimeter walls
     const wallGeometry = new THREE.BoxGeometry(1, 3, 100) // Height of 3, length of 100
@@ -296,9 +337,6 @@ const App = () => {
 
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
-
-    // Initialize enemy manager with platforms
-    enemyManager = new EnemyManager(scene, 50, platforms);
 
     // Initialize powerUpManager
     powerUpManager = new PowerUpManager(scene, 50);
@@ -497,7 +535,7 @@ const App = () => {
       <div ref={mountRef} />
       <div className="health-bar">
         <div 
-          className="health-fill" 
+          className={getHealthBarClass(health)}
           style={{ width: `${health}%` }}
         />
         <div className="health-text">{health}</div>
