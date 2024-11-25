@@ -5,45 +5,63 @@ import { EnemyManager } from "./Enemy"
 import { PowerUpManager } from "./PowerUp.tsx"
 import { useGameStore } from "./store/gameStore"
 import musicLoop from "./assets/music_loop.wav"
+import musicLoop2 from "./assets/music_loop_2.wav"
 import { HealthPickupManager } from "./HealthPickup"
 import { Player } from "./Player"
 import bulletSound from "./assets/bullet.wav"
 import HUD from "./components/HUD"
 
 const setupBackgroundMusic = () => {
-  // Create audio context
   const AudioContext = window.AudioContext || (window as any).webkitAudioContext
   const audioContext = new AudioContext()
+  let loopCount = 0
+  let currentTrack = 2
+  let source: AudioBufferSourceNode | null = null
+  let audioBuffer1: AudioBuffer | null = null
+  let audioBuffer2: AudioBuffer | null = null
 
-  // Create a buffer source for looping
-  const createBufferSource = async () => {
-    const response = await fetch(musicLoop)
-    const arrayBuffer = await response.arrayBuffer()
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+  const loadAudioBuffers = async () => {
+    const response1 = await fetch(musicLoop)
+    const arrayBuffer1 = await response1.arrayBuffer()
+    audioBuffer1 = await audioContext.decodeAudioData(arrayBuffer1)
 
-    const source = audioContext.createBufferSource()
-    source.buffer = audioBuffer
-    source.loop = true
+    const response2 = await fetch(musicLoop2)
+    const arrayBuffer2 = await response2.arrayBuffer()
+    audioBuffer2 = await audioContext.decodeAudioData(arrayBuffer2)
+  }
 
-    // Create gain node for volume control
+  const createAndStartSource = (buffer: AudioBuffer) => {
+    if (source) {
+      source.stop()
+      source.disconnect()
+    }
+
+    source = audioContext.createBufferSource()
+    source.buffer = buffer
+    source.loop = false
+
     const gainNode = audioContext.createGain()
-    gainNode.gain.value = 0.25 // Set volume to 0.5
+    gainNode.gain.value = 0.25
 
-    // Connect nodes
     source.connect(gainNode)
     gainNode.connect(audioContext.destination)
 
-    return source
+    source.onended = () => {
+      loopCount++
+      if (loopCount >= 4) {
+        loopCount = 0
+        currentTrack = currentTrack === 1 ? 2 : 1
+      }
+      createAndStartSource(currentTrack === 1 ? audioBuffer1! : audioBuffer2!)
+    }
+
+    source.start(0)
   }
 
-  // Initialize and start playback
-  let source: AudioBufferSourceNode | null = null
-  createBufferSource().then((newSource) => {
-    source = newSource
-    source.start(0)
+  loadAudioBuffers().then(() => {
+    createAndStartSource(audioBuffer2!)
   })
 
-  // Return an object with controls
   return {
     pause() {
       audioContext.suspend()
