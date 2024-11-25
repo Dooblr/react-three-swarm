@@ -11,6 +11,19 @@ export interface Enemy {
 }
 
 export class EnemyManager {
+  // Explosion effect parameters
+  private readonly EXPLOSION_PARAMS = {
+    colors: [0xff0000, 0xff8800, 0xffff00, 0xff3300, 0xff5500, 0xff1100],
+    particleCount: 120,
+    baseSpeed: 8,
+    speedVariation: 3.0, // Multiplier for random speed variation
+    burstVelocity: 2.0, // Multiplier for additional random velocity
+    particleSize: 0.1,
+    lifetime: 1000,
+    gravity: 0.0002,
+    drag: 0.9
+  }
+
   private enemies: Enemy[] = []
   private scene: THREE.Scene
   private levelBounds: number
@@ -112,56 +125,61 @@ export class EnemyManager {
   }
 
   private createExplosion(position: THREE.Vector3) {
-    const colors = [0xff0000, 0xff4500, 0xffa500, 0xffffff] // Red, OrangeRed, Orange, White
-    const particleCount = 50
-    const rings = 4 // One ring per color
-    const speed = 0.3
+    const geometry = new THREE.BufferGeometry()
+    const positions = new Float32Array(this.EXPLOSION_PARAMS.particleCount * 3)
+    const velocities: THREE.Vector3[] = []
+    
+    for (let i = 0; i < this.EXPLOSION_PARAMS.particleCount; i++) {
+      positions[i * 3] = position.x
+      positions[i * 3 + 1] = position.y
+      positions[i * 3 + 2] = position.z
 
-    for (let ring = 0; ring < rings; ring++) {
-      const geometry = new THREE.BufferGeometry()
-      const positions = new Float32Array(particleCount * 3)
-      const velocities: THREE.Vector3[] = []
-      
-      // Initialize particles at enemy position
-      for (let i = 0; i < particleCount; i++) {
-        positions[i * 3] = position.x
-        positions[i * 3 + 1] = position.y
-        positions[i * 3 + 2] = position.z
+      const phi = Math.random() * Math.PI * 2
+      const theta = Math.random() * Math.PI
+      const speed = this.EXPLOSION_PARAMS.baseSpeed * 
+                   (1 + Math.random() * this.EXPLOSION_PARAMS.speedVariation)
 
-        // Calculate velocity in a spherical pattern
-        const angle = (i / particleCount) * Math.PI * 2
-        const elevation = (Math.random() - 0.5) * Math.PI
-        const velocityVector = new THREE.Vector3(
-          Math.cos(angle) * Math.cos(elevation),
-          Math.sin(elevation),
-          Math.sin(angle) * Math.cos(elevation)
-        ).multiplyScalar(speed * (1 + Math.random() * 0.5))
+      const velocityVector = new THREE.Vector3(
+        Math.sin(theta) * Math.cos(phi),
+        Math.sin(theta) * Math.sin(phi),
+        Math.cos(theta)
+      ).multiplyScalar(speed)
 
-        velocities.push(velocityVector)
-      }
+      // Add burst velocity
+      const burst = this.EXPLOSION_PARAMS.burstVelocity
+      velocityVector.x += (Math.random() - 0.5) * burst
+      velocityVector.y += (Math.random() - 0.5) * burst
+      velocityVector.z += (Math.random() - 0.5) * burst
 
-      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+      velocities.push(velocityVector)
+    }
 
-      const material = new THREE.PointsMaterial({
-        color: colors[ring],
-        size: 0.15,
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+
+    const points = new THREE.Points(
+      geometry,
+      new THREE.PointsMaterial({
+        color: this.EXPLOSION_PARAMS.colors[
+          Math.floor(Math.random() * this.EXPLOSION_PARAMS.colors.length)
+        ],
+        size: this.EXPLOSION_PARAMS.particleSize,
         transparent: true,
         opacity: 1,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
       })
+    )
 
-      const points = new THREE.Points(geometry, material)
-      points.userData = {
-        velocities,
-        createdAt: Date.now(),
-        lifetime: 300, // Short lifetime (300ms)
-        gravity: 0.002,
-      }
-
-      this.scene.add(points)
-      this.particles.push(points)
+    points.userData = {
+      velocities,
+      createdAt: Date.now(),
+      lifetime: this.EXPLOSION_PARAMS.lifetime,
+      gravity: this.EXPLOSION_PARAMS.gravity,
+      drag: this.EXPLOSION_PARAMS.drag
     }
+
+    this.scene.add(points)
+    this.particles.push(points)
   }
 
   update(playerPosition: THREE.Vector3, deltaTime: number) {
@@ -280,7 +298,6 @@ export class EnemyManager {
   }
 
   private updateParticles(deltaTime: number) {
-    // Update existing particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const points = this.particles[i]
       const positions = points.geometry.attributes.position.array as Float32Array
@@ -289,16 +306,21 @@ export class EnemyManager {
 
       // Update particle positions
       for (let j = 0; j < positions.length; j += 3) {
-        velocities[j/3].y -= points.userData.gravity
-        positions[j] += velocities[j/3].x
-        positions[j + 1] += velocities[j/3].y
-        positions[j + 2] += velocities[j/3].z
+        // Apply gravity and drag
+        velocities[j/3].multiplyScalar(points.userData.drag)
+        velocities[j/3].y -= points.userData.gravity * deltaTime
+
+        // Update positions
+        positions[j] += velocities[j/3].x * deltaTime
+        positions[j + 1] += velocities[j/3].y * deltaTime
+        positions[j + 2] += velocities[j/3].z * deltaTime
       }
       points.geometry.attributes.position.needsUpdate = true
 
-      // Fade out
-      const opacity = 1 - (age / points.userData.lifetime)
-      ;(points.material as THREE.PointsMaterial).opacity = opacity
+      // Fade out with a more dramatic curve
+      const fadeProgress = age / points.userData.lifetime
+      const opacity = Math.cos(fadeProgress * Math.PI * 0.5)
+      ;(points.material as THREE.PointsMaterial).opacity = Math.max(0, opacity)
 
       // Remove if expired
       if (age >= points.userData.lifetime) {
@@ -329,7 +351,7 @@ export class EnemyManager {
         // Update spike colors to a slightly darker version
         enemy.mesh.children[0].children.forEach(spike => {
           const darkerColor = color.clone().multiplyScalar(0.6)
-          ;(spike.material as THREE.MeshStandardMaterial).color = darkerColor
+          ;((spike as THREE.Mesh).material as THREE.MeshStandardMaterial).color = darkerColor
         })
 
         if (enemy.health <= 0) {

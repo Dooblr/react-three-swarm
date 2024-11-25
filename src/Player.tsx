@@ -30,10 +30,8 @@ export class Player {
     private damageFlashTime: number = 0
     private readonly FLASH_DURATION = 200 // milliseconds
     private originalColor: number = 0x888888
-    private scene: THREE.Scene
 
     constructor(scene: THREE.Scene) {
-        this.scene = scene
         // Create player cube
         const cubeGeometry = new THREE.BoxGeometry(1, 1, 1)
         const cubeMaterial = new THREE.MeshStandardMaterial({ 
