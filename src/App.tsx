@@ -14,11 +14,12 @@ import HUD from "./components/HUD"
 const setupBackgroundMusic = () => {
   const AudioContext = window.AudioContext || (window as any).webkitAudioContext
   const audioContext = new AudioContext()
-  let loopCount = 0
-  let currentTrack = 2
   let source: AudioBufferSourceNode | null = null
+  let gainNode: GainNode | null = null
   let audioBuffer1: AudioBuffer | null = null
   let audioBuffer2: AudioBuffer | null = null
+  const SILENCE_DURATION = 5000 // 5 seconds in ms
+  const FADE_DURATION = 2 // Fade out duration in seconds
 
   const loadAudioBuffers = async () => {
     const response1 = await fetch(musicLoop)
@@ -30,7 +31,17 @@ const setupBackgroundMusic = () => {
     audioBuffer2 = await audioContext.decodeAudioData(arrayBuffer2)
   }
 
-  const createAndStartSource = (buffer: AudioBuffer) => {
+  const fadeOutAndStop = (source: AudioBufferSourceNode, gainNode: GainNode) => {
+    const startTime = audioContext.currentTime
+    gainNode.gain.setValueAtTime(gainNode.gain.value, startTime)
+    gainNode.gain.linearRampToValueAtTime(0, startTime + FADE_DURATION)
+    
+    setTimeout(() => {
+      source.stop()
+    }, FADE_DURATION * 1000)
+  }
+
+  const createAndStartSource = (buffer: AudioBuffer, isFirstTrack: boolean) => {
     if (source) {
       source.stop()
       source.disconnect()
@@ -38,28 +49,29 @@ const setupBackgroundMusic = () => {
 
     source = audioContext.createBufferSource()
     source.buffer = buffer
-    source.loop = false
+    source.loop = false // No looping needed
 
-    const gainNode = audioContext.createGain()
+    gainNode = audioContext.createGain()
     gainNode.gain.value = 0.25
 
     source.connect(gainNode)
     gainNode.connect(audioContext.destination)
 
+    // When track ends, fade out and switch to other track after silence
     source.onended = () => {
-      loopCount++
-      if (loopCount >= 4) {
-        loopCount = 0
-        currentTrack = currentTrack === 1 ? 2 : 1
+      if (gainNode) {
+        fadeOutAndStop(source!, gainNode)
       }
-      createAndStartSource(currentTrack === 1 ? audioBuffer1! : audioBuffer2!)
+      setTimeout(() => {
+        createAndStartSource(isFirstTrack ? audioBuffer2! : audioBuffer1!, !isFirstTrack)
+      }, SILENCE_DURATION)
     }
 
     source.start(0)
   }
 
   loadAudioBuffers().then(() => {
-    createAndStartSource(audioBuffer2!)
+    createAndStartSource(audioBuffer1!, true) // Start with track 1
   })
 
   return {
@@ -73,6 +85,9 @@ const setupBackgroundMusic = () => {
       if (source) {
         source.stop()
         source.disconnect()
+      }
+      if (gainNode) {
+        gainNode.disconnect()
       }
       audioContext.close()
     },
