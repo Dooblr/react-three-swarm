@@ -6,6 +6,13 @@ interface GameState {
   fireRate: number
   powerupsCollected: number
   health: number
+  audioLevels: {
+    music: number
+    bullet: number
+    powerup: number
+    enemyHit: number
+    enemyDeath: number
+  }
   setPaused: (paused: boolean) => void
   setScore: (score: number | ((prev: number) => number)) => void
   incrementScore: () => void
@@ -13,6 +20,7 @@ interface GameState {
   incrementPowerups: () => void
   setHealth: (health: number) => void
   decrementHealth: () => void
+  setAudioLevel: (type: keyof GameState['audioLevels'], level: number) => void
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -21,6 +29,13 @@ export const useGameStore = create<GameState>((set) => ({
   fireRate: 1,
   powerupsCollected: 0,
   health: 100,
+  audioLevels: {
+    music: 0.25,     // Background music
+    bullet: 0.5,     // Bullet sound
+    powerup: 0.3,    // Powerup/health pickup sound
+    enemyHit: 0.15,   // Enemy hit sound
+    enemyDeath: 0.4  // Enemy death sound
+  },
   setPaused: (paused) => set({ isPaused: paused }),
   setScore: (score) => set((state) => ({ 
     score: typeof score === 'function' ? score(state.score) : score 
@@ -39,4 +54,10 @@ export const useGameStore = create<GameState>((set) => ({
     const newHealth = Math.max(0, state.health - 10);
     return { health: newHealth };
   }),
+  setAudioLevel: (type, level) => set((state) => ({
+    audioLevels: {
+      ...state.audioLevels,
+      [type]: Math.max(0, Math.min(1, level)) // Clamp between 0 and 1
+    }
+  })),
 })) 

@@ -16,7 +16,7 @@ export class PowerUpManager {
     this.levelBounds = levelBounds
     // Initialize audio
     this.powerupAudio = new Audio(powerupSound)
-    this.powerupAudio.volume = 0.3 // Adjust volume as needed
+    this.powerupAudio.volume = useGameStore.getState().audioLevels.powerup
   }
 
   createPowerUp(): THREE.Mesh {

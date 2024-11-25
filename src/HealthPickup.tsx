@@ -14,7 +14,7 @@ export class HealthPickupManager {
     this.scene = scene
     this.levelBounds = levelBounds
     this.healthAudio = new Audio(healthSound)
-    this.healthAudio.volume = 0.3
+    this.healthAudio.volume = useGameStore.getState().audioLevels.powerup
   }
 
   createHealthPickup(): THREE.Group {

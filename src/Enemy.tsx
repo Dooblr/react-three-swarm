@@ -30,9 +30,9 @@ export class EnemyManager {
     this.platforms = platforms
     // Initialize audio
     this.hitAudio = new Audio(enemyHitSound)
-    this.hitAudio.volume = 0.3
+    this.hitAudio.volume = useGameStore.getState().audioLevels.enemyHit
     this.deathAudio = new Audio(enemyDeathSound)
-    this.deathAudio.volume = 0.4 // Slightly louder than hit sound
+    this.deathAudio.volume = useGameStore.getState().audioLevels.enemyDeath
   }
 
   createEnemy(): Enemy {
