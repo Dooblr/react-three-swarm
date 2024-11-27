@@ -25,6 +25,15 @@ export const useGameAudio = () => {
   const currentAudio = useRef<HTMLAudioElement | null>(null)
   const timeoutRef = useRef<number>()
 
+  const updateAllAudioVolumes = useCallback((masterVolume: number, isMuted: boolean) => {
+    Object.entries(audioElements.current).forEach(([key, audio]) => {
+      if (audio) {
+        const baseVolume = key.includes('backgroundMusic') ? 0.3 : 0.5
+        audio.volume = isMuted ? 0 : baseVolume * masterVolume
+      }
+    })
+  }, [])
+
   const createAudio = useCallback((source: string, volume = 1) => {
     const audio = new Audio(source)
     const { masterVolume, isMuted } = useGameState.getState()
@@ -34,13 +43,9 @@ export const useGameAudio = () => {
 
   useEffect(() => {
     const unsubscribe = useGameState.subscribe(
-      (state) => ({ masterVolume: state.masterVolume, isMuted: state.isMuted }),
-      ({ masterVolume, isMuted }) => {
-        Object.values(audioElements.current).forEach(audio => {
-          if (audio) {
-            audio.volume = isMuted ? 0 : audio.volume * masterVolume
-          }
-        })
+      (state) => {
+        const { masterVolume, isMuted } = state
+        updateAllAudioVolumes(masterVolume, isMuted)
       }
     )
 
@@ -53,6 +58,9 @@ export const useGameAudio = () => {
     
     audioElements.current.backgroundMusic1 = track1
     audioElements.current.backgroundMusic2 = track2
+
+    const { masterVolume, isMuted } = useGameState.getState()
+    updateAllAudioVolumes(masterVolume, isMuted)
 
     const switchTrack = () => {
       if (timeoutRef.current) {

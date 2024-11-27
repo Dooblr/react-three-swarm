@@ -1,22 +1,26 @@
-import { FC, useEffect, useState } from 'react'
+import { FC, useEffect, useState, useCallback } from 'react'
 import { useGameAudio } from '../hooks/useGameAudio'
 import { useGameState } from '../store/gameState'
 
 export const AudioManager: FC = () => {
   const [isInitialized, setIsInitialized] = useState(false)
   const { playBackgroundMusic } = useGameAudio()
-  const { isPaused, masterVolume, isMuted, setMasterVolume, toggleMute } = useGameState()
+  const { masterVolume, isMuted, setMasterVolume, toggleMute } = useGameState()
 
-  const startAudio = () => {
+  const startAudio = useCallback(() => {
     const audioContext = new AudioContext()
     playBackgroundMusic()
     setIsInitialized(true)
-  }
+  }, [playBackgroundMusic])
 
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value)
     setMasterVolume(newVolume)
-  }
+  }, [setMasterVolume])
+
+  const handleMuteClick = useCallback(() => {
+    toggleMute()
+  }, [toggleMute])
 
   return (
     <div style={{ 
@@ -37,7 +41,10 @@ export const AudioManager: FC = () => {
         </button>
       )}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <button onClick={toggleMute}>
+        <button 
+          onClick={handleMuteClick}
+          style={{ minWidth: '30px' }}
+        >
           {isMuted ? '🔇' : masterVolume > 0.5 ? '🔊' : masterVolume > 0 ? '🔉' : '🔈'}
         </button>
         <input
@@ -49,8 +56,12 @@ export const AudioManager: FC = () => {
           onChange={handleVolumeChange}
           style={{ width: '100px' }}
         />
-        <span style={{ color: 'white', minWidth: '40px' }}>
-          {Math.round(masterVolume * 100)}%
+        <span style={{ 
+          color: 'white', 
+          minWidth: '40px',
+          userSelect: 'none'
+        }}>
+          {Math.round((isMuted ? 0 : masterVolume) * 100)}%
         </span>
       </div>
     </div>
