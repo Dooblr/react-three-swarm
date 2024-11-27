@@ -2,7 +2,7 @@ import { FC, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
-type ProjectileType = 'player' | 'enemy'
+type ProjectileType = 'enemy'
 
 interface Projectile {
   id: number
@@ -15,12 +15,6 @@ interface Projectile {
 }
 
 const PROJECTILE_CONFIGS = {
-  player: {
-    speed: 0.5,
-    lifetime: 3000, // milliseconds
-    color: '#00ff00',
-    size: 0.2,
-  },
   enemy: {
     speed: 0.3,
     lifetime: 2000,
