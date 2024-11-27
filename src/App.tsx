@@ -389,12 +389,11 @@ const App = () => {
 
     // Auto-shooting interval
     let shootingInterval: ReturnType<typeof setInterval>
-    const BASE_FIRE_RATE = 1000 // Base fire rate of 1 shot per second (1000ms)
     const updateShootingInterval = () => {
       if (shootingInterval) clearInterval(shootingInterval)
       const fireRate = useGameStore.getState().fireRate
       const isPoweredShot = fireRate >= POWER_SHOT_THRESHOLD
-      const actualFireRate = BASE_FIRE_RATE / (fireRate * (isPoweredShot ? POWER_SHOT_SPEED_REDUCER : 1))
+      const actualFireRate = isPoweredShot ? fireRate * POWER_SHOT_SPEED_REDUCER : fireRate
       shootingInterval = setInterval(createProjectile, actualFireRate)
     }
     updateShootingInterval()

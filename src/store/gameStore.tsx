@@ -18,6 +18,7 @@ interface GameState {
   hasHomingShots: boolean
   hasSpeedBoost: boolean
   homingEnabled: boolean
+  weaponScore: number
   setPaused: (paused: boolean) => void
   setCredits: (credits: number | ((prev: number) => number)) => void
   incrementCredits: () => void
@@ -33,6 +34,8 @@ interface GameState {
   purchaseHomingShots: () => boolean
   purchaseSpeedBoost: () => boolean
   toggleHoming: () => void
+  setWeaponScore: (score: number) => void
+  incrementWeaponScore: () => void
 }
 
 export const STORE_PRICES = {
@@ -46,7 +49,7 @@ export const STORE_PRICES = {
 export const useGameStore = create<GameState>((set) => ({
   isPaused: false,
   credits: 0,
-  fireRate: 1,
+  fireRate: 1000,  // Base fire rate in milliseconds
   powerupsCollected: 0,
   health: 100,
   audioLevels: {
@@ -61,19 +64,16 @@ export const useGameStore = create<GameState>((set) => ({
   hasHomingShots: false,
   hasSpeedBoost: false,
   homingEnabled: true,
+  weaponScore: 0,
   setPaused: (paused) => set({ isPaused: paused }),
   setCredits: (credits) => set((state) => ({ 
     credits: typeof credits === 'function' ? credits(state.credits) : credits 
   })),
   incrementCredits: () => set((state) => ({ credits: state.credits + 1 })),
   setFireRate: (rate) => set({ fireRate: rate }),
-  incrementPowerups: () => set((state) => {
-    const newPowerups = state.powerupsCollected + 1;
-    return { 
-      powerupsCollected: newPowerups,
-      fireRate: state.fireRate * 1.2  // Increase fire rate by 20%
-    };
-  }),
+  incrementPowerups: () => set((state) => ({ 
+    fireRate: Math.max(state.fireRate * 0.95, 100)  // 5% faster, with minimum cap
+  })),
   setHealth: (health) => set({ health: Math.max(0, Math.min(100, health)) }),
   decrementHealth: () => set((state) => {
     const newHealth = Math.max(0, state.health - 10);
@@ -157,6 +157,22 @@ export const useGameStore = create<GameState>((set) => ({
     return success;
   },
   toggleHoming: () => set((state) => ({ homingEnabled: !state.homingEnabled })),
+  setWeaponScore: (score) => set({ weaponScore: score }),
+  incrementWeaponScore: () => set((state) => {
+    const newScore = state.weaponScore + 1;
+    
+    // Reset fire rate at tier thresholds
+    if (newScore === 5 || newScore === 10) {
+      return { 
+        weaponScore: newScore,
+        fireRate: 1000  // Reset to base fire rate at new tier
+      };
+    }
+    
+    return { 
+      weaponScore: Math.min(newScore, 10)
+    };
+  }),
 }))
 
 export const getGameStore = () => useGameStore.getState()

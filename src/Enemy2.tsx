@@ -18,8 +18,8 @@ export class Enemy2 {
   private readonly LASER_RADIUS = 0.2 // Radius of cylinder
   private readonly SHOT_DELAY = 1000 // Fire every 1 second
   private activeLasers: THREE.Mesh[] = []
-  private readonly MIN_FIRING_RANGE = 10  // Minimum distance to start firing
-  private readonly MAX_FIRING_RANGE = 30  // Maximum distance to stop firing
+  private readonly MIN_FIRING_RANGE = 10 // Minimum distance to start firing
+  private readonly MAX_FIRING_RANGE = 30 // Maximum distance to stop firing
 
   constructor(scene: THREE.Scene, position: THREE.Vector3) {
     this.scene = scene // Store scene reference
@@ -93,49 +93,52 @@ export class Enemy2 {
     // Check if within firing range before shooting
     const distanceToPlayer = this.mesh.position.distanceTo(playerPosition)
     const currentTime = Date.now()
-    if (currentTime - this.lastShotTime > this.SHOT_DELAY && 
-        distanceToPlayer >= this.MIN_FIRING_RANGE && 
-        distanceToPlayer <= this.MAX_FIRING_RANGE) {
-        this.shootLaser(playerPosition)
-        this.lastShotTime = currentTime
+    if (
+      currentTime - this.lastShotTime > this.SHOT_DELAY &&
+      distanceToPlayer >= this.MIN_FIRING_RANGE &&
+      distanceToPlayer <= this.MAX_FIRING_RANGE
+    ) {
+      this.shootLaser(playerPosition)
+      this.lastShotTime = currentTime
     }
 
     // Update active lasers
     for (let i = this.activeLasers.length - 1; i >= 0; i--) {
-        const laser = this.activeLasers[i]
-        const laserDirection = laser.userData.direction.clone()
-        
-        // Move laser forward
-        laser.position.add(laserDirection.multiplyScalar(this.LASER_SPEED))
-        laser.userData.distanceTraveled += this.LASER_SPEED
+      const laser = this.activeLasers[i]
+      const laserDirection = laser.userData.direction.clone()
 
-        // Check for player collision
-        const distanceToPlayer = laser.position.distanceTo(playerPosition)
-        if (distanceToPlayer < 1) { // Collision radius of 1 unit
-            useGameStore.getState().decrementHealth()
+      // Move laser forward
+      laser.position.add(laserDirection.multiplyScalar(this.LASER_SPEED))
+      laser.userData.distanceTraveled += this.LASER_SPEED
+
+      // Check for player collision
+      const distanceToPlayer = laser.position.distanceTo(playerPosition)
+      if (distanceToPlayer < 1) {
+        // Collision radius of 1 unit
+        useGameStore.getState().decrementHealth()
+        this.scene.remove(laser)
+        this.activeLasers.splice(i, 1)
+        continue
+      }
+
+      // Check for barrier collision if barriers exist
+      if (barriers && barriers.length > 0) {
+        const laserBox = new THREE.Box3().setFromObject(laser)
+        for (const barrier of barriers) {
+          const barrierBox = new THREE.Box3().setFromObject(barrier)
+          if (laserBox.intersectsBox(barrierBox)) {
             this.scene.remove(laser)
             this.activeLasers.splice(i, 1)
-            continue
+            break
+          }
         }
+      }
 
-        // Check for barrier collision if barriers exist
-        if (barriers && barriers.length > 0) {
-            const laserBox = new THREE.Box3().setFromObject(laser)
-            for (const barrier of barriers) {
-                const barrierBox = new THREE.Box3().setFromObject(barrier)
-                if (laserBox.intersectsBox(barrierBox)) {
-                    this.scene.remove(laser)
-                    this.activeLasers.splice(i, 1)
-                    break
-                }
-            }
-        }
-
-        // Remove laser after traveling certain distance
-        if (laser.userData.distanceTraveled > 50) {
-            this.scene.remove(laser)
-            this.activeLasers.splice(i, 1)
-        }
+      // Remove laser after traveling certain distance
+      if (laser.userData.distanceTraveled > 50) {
+        this.scene.remove(laser)
+        this.activeLasers.splice(i, 1)
+      }
     }
   }
 

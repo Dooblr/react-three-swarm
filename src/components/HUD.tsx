@@ -23,6 +23,7 @@ const HUD = ({ onPauseClick, isPaused, player }: HUDProps) => {
   const hasHomingShots = useGameStore(state => state.hasHomingShots)
   const homingEnabled = useGameStore(state => state.homingEnabled)
   const toggleHoming = useGameStore(state => state.toggleHoming)
+  const weaponScore = useGameStore((state) => state.weaponScore);
 
   useEffect(() => {
     // Check if health decreased
@@ -166,6 +167,10 @@ const HUD = ({ onPauseClick, isPaused, player }: HUDProps) => {
           <button className="close-store-button" onClick={handleCloseStore}>Close Store</button>
         </div>
       )}
+
+      <div className="weapon-score">
+        Weapon Level: {weaponScore}/10
+      </div>
     </>
   )
 }

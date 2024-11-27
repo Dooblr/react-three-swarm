@@ -10,10 +10,16 @@ export class PowerUpManager {
   private spawnRate: number = 10000 // 10 seconds
   private powerupAudio: HTMLAudioElement
 
+  // Base fire rates for each tier
+  private readonly TIER_FIRE_RATES = {
+    TIER1: 1000,  // Red sphere (0-4 pickups)
+    TIER2: 800,   // Yellow diamond (5-9 pickups)
+    TIER3: 600    // Blue tetrahedron (10+ pickups)
+  }
+
   constructor(scene: THREE.Scene, levelBounds: number) {
     this.scene = scene
     this.levelBounds = levelBounds
-    // Initialize audio
     this.powerupAudio = new Audio(powerupSound)
     this.powerupAudio.volume = useGameStore.getState().audioLevels.powerup
   }
@@ -66,7 +72,7 @@ export class PowerUpManager {
       powerUp.rotation.y += powerUp.userData.rotationSpeed
       powerUp.position.y = 1 + Math.sin(now * 0.002 + powerUp.userData.floatOffset) * 0.2
 
-      // Check for player collision with wider radius (changed from 1 to 2.5)
+      // Check for player collision
       if (playerPosition.distanceTo(powerUp.position) < 2.5) {
         // Play sound effect
         this.powerupAudio.currentTime = 0
@@ -74,8 +80,10 @@ export class PowerUpManager {
           console.log("Audio play failed:", error)
         })
 
-        // Increment powerups and automatically update fire rate
-        useGameStore.getState().incrementPowerups()
+        const gameStore = useGameStore.getState()
+        
+        // Simply increment weapon score, the store handles fire rate changes
+        gameStore.incrementWeaponScore()
 
         // Remove power-up
         this.scene.remove(powerUp)
@@ -85,22 +93,21 @@ export class PowerUpManager {
   }
 
   cleanup() {
-    // Add null checks and proper cleanup
     this.powerUps.forEach(powerUp => {
-        if (powerUp.geometry) powerUp.geometry.dispose()
-        if (powerUp.material) {
-            if (Array.isArray(powerUp.material)) {
-                powerUp.material.forEach(m => m.dispose())
-            } else {
-                powerUp.material.dispose()
-            }
+      if (powerUp.geometry) powerUp.geometry.dispose()
+      if (powerUp.material) {
+        if (Array.isArray(powerUp.material)) {
+          powerUp.material.forEach(m => m.dispose())
+        } else {
+          powerUp.material.dispose()
         }
-        this.scene.remove(powerUp)
+      }
+      this.scene.remove(powerUp)
     })
     this.powerUps = []
     if (this.powerupAudio) {
-        this.powerupAudio.pause()
-        this.powerupAudio.src = ''
+      this.powerupAudio.pause()
+      this.powerupAudio.src = ''
     }
   }
 } 

@@ -10,8 +10,10 @@ export class ProjectileManager {
   private bulletAudio: HTMLAudioElement
   private upgradedBulletAudio: HTMLAudioElement
   private levelBounds: number
-  private projectileSpeed = 0.5
+  private PROJECTILE_SPEED = 0.5
   private PROJECTILE_INITIAL_Y_VELOCITY = 0.2
+  private readonly YELLOW_SPEED_THRESHOLD = 0.15  // Threshold for yellow projectiles
+  private readonly BLUE_SPEED_THRESHOLD = 0.08    // Threshold for blue projectiles
 
   constructor(scene: THREE.Scene, levelBounds: number) {
     this.scene = scene
@@ -27,137 +29,113 @@ export class ProjectileManager {
     playerRotation: number,
     isPoweredShot: boolean
   ): void {
-    if (!useGameStore.getState().isPaused) {
-      const audioToPlay = isPoweredShot ? this.upgradedBulletAudio : this.bulletAudio
-      audioToPlay.currentTime = 0
-      audioToPlay.play().catch((error) => {
-        console.log("Audio play failed:", error)
-      })
+    if (useGameStore.getState().isPaused) return;
 
-      const projectileGeometry = new THREE.SphereGeometry(
-        isPoweredShot ? 0.3 : 0.2
-      )
-      const projectileMaterial = new THREE.MeshStandardMaterial({
-        color: isPoweredShot ? 0xffff00 : 0xff0000,
-        emissive: isPoweredShot ? 0xffff00 : 0xff0000,
-        emissiveIntensity: isPoweredShot ? 0.5 : 0.2,
-      })
+    const audioToPlay = isPoweredShot ? this.upgradedBulletAudio : this.bulletAudio;
+    audioToPlay.currentTime = 0;
+    audioToPlay.play().catch(error => console.log("Audio play failed:", error));
 
-      const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial)
-      projectile.position.copy(playerPosition)
-      projectile.position.y += 0.5
+    let geometry: THREE.BufferGeometry;
+    let material: THREE.MeshStandardMaterial;
+    let projectileType: string;
 
-      projectile.userData = {
+    // Get current attack speed from store
+    const currentAttackSpeed = useGameStore.getState().attackSpeed;
+
+    if (currentAttackSpeed <= this.BLUE_SPEED_THRESHOLD) {
+        // Third tier - Purple Star
+        geometry = new THREE.TetrahedronGeometry(0.4);
+        material = new THREE.MeshStandardMaterial({
+            color: 0x9932CC,
+            emissive: 0x9932CC,
+            emissiveIntensity: 0.8
+        });
+        projectileType = 'purple';
+    } else if (currentAttackSpeed <= this.YELLOW_SPEED_THRESHOLD) {
+        // Second tier - Blue Diamond
+        geometry = new THREE.OctahedronGeometry(0.3);
+        material = new THREE.MeshStandardMaterial({
+            color: 0x00ffff,
+            emissive: 0x00ffff,
+            emissiveIntensity: 0.6
+        });
+        projectileType = 'blue';
+    } else {
+        // First tier - Basic Projectile
+        geometry = new THREE.SphereGeometry(isPoweredShot ? 0.3 : 0.2);
+        material = new THREE.MeshStandardMaterial({
+            color: isPoweredShot ? 0xffff00 : 0xff0000,
+            emissive: isPoweredShot ? 0xffff00 : 0xff0000,
+            emissiveIntensity: isPoweredShot ? 0.5 : 0.2
+        });
+        projectileType = 'yellow';
+    }
+
+    const projectile = new THREE.Mesh(geometry, material);
+    projectile.position.copy(playerPosition);
+    projectile.position.y += 0.5;
+
+    // Add rotation speeds for upgraded projectiles
+    const rotationSpeed = projectileType !== 'yellow' ? {
+        x: Math.random() * 0.1,
+        y: Math.random() * 0.1,
+        z: Math.random() * 0.1
+    } : null;
+
+    projectile.userData = {
         direction: new THREE.Vector3(
-          Math.sin(playerRotation),
-          0,
-          Math.cos(playerRotation)
+            Math.sin(playerRotation),
+            0,
+            Math.cos(playerRotation)
         ).normalize(),
         isPowered: isPoweredShot,
         timeAlive: 0,
-        targetEnemy: null,
-        yVelocity: this.PROJECTILE_INITIAL_Y_VELOCITY,
-      }
+        projectileType,
+        rotationSpeed,
+        yVelocity: this.PROJECTILE_INITIAL_Y_VELOCITY
+    };
 
-      this.scene.add(projectile)
-      this.projectiles.push(projectile)
-    }
+    this.scene.add(projectile);
+    this.projectiles.push(projectile);
   }
 
   update(enemyManager: EnemyManager): void {
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
-      const projectile = this.projectiles[i]
-      projectile.userData.timeAlive += 1
+        const projectile = this.projectiles[i];
+        projectile.userData.timeAlive += 1;
 
-      // Only find nearest enemy if we have homing shots AND homing is enabled
-      if (
-        useGameStore.getState().hasHomingShots && 
-        useGameStore.getState().homingEnabled &&
-        !projectile.userData.targetEnemy
-      ) {
-        this.findNearestEnemy(projectile, enemyManager)
-      }
+        // Apply rotation for upgraded projectiles
+        if (projectile.userData.rotationSpeed) {
+            projectile.rotation.x += projectile.userData.rotationSpeed.x;
+            projectile.rotation.y += projectile.userData.rotationSpeed.y;
+            projectile.rotation.z += projectile.userData.rotationSpeed.z;
+        }
 
-      // Use homing behavior only if we have the powerup AND homing is enabled
-      if (
-        useGameStore.getState().hasHomingShots && 
-        useGameStore.getState().homingEnabled
-      ) {
-        const homingStrength = projectile.userData.isPowered ? 0.1 : 0.05
-        this.updateHomingProjectile(projectile, homingStrength)
-      } else {
-        // Normal straight movement
+        // Move projectile
         projectile.position.add(
-          projectile.userData.direction
-            .clone()
-            .multiplyScalar(this.projectileSpeed)
-        )
-      }
+            projectile.userData.direction
+                .clone()
+                .multiplyScalar(this.PROJECTILE_SPEED)
+        );
 
-      // Remove old projectiles
-      if (
-        projectile.userData.timeAlive > 300 ||
-        this.isOutOfBounds(projectile)
-      ) {
-        this.removeProjectile(i)
-        continue
-      }
+        // Check bounds and lifetime
+        if (
+            projectile.userData.timeAlive > 300 ||
+            this.isOutOfBounds(projectile)
+        ) {
+            this.removeProjectile(i);
+            continue;
+        }
 
-      // Check enemy collisions
-      if (enemyManager.handleProjectileCollision(projectile.position, projectile.userData.isPowered)) {
-        this.removeProjectile(i)
-      }
+        // Calculate damage based on projectile type
+        const damage = projectile.userData.projectileType === 'purple' ? 3 :
+                      projectile.userData.projectileType === 'blue' ? 2 : 1;
+
+        // Check collisions
+        if (enemyManager.handleProjectileCollision(projectile.position, projectile.userData.isPowered, damage)) {
+            this.removeProjectile(i);
+        }
     }
-  }
-
-  private updateHomingProjectile(
-    projectile: THREE.Mesh,
-    homingStrength: number
-  ): void {
-    if (projectile.userData.targetEnemy) {
-      const target = projectile.userData.targetEnemy.mesh.position
-      const toTarget = new THREE.Vector3()
-        .subVectors(target, projectile.position)
-        .normalize()
-
-      // Keep projectile at constant height
-      toTarget.y = 0
-
-      // Lerp towards target with different strengths based on power
-      projectile.userData.direction.lerp(toTarget, homingStrength)
-
-      // Move projectile
-      projectile.position.add(
-        projectile.userData.direction
-          .clone()
-          .multiplyScalar(this.projectileSpeed)
-      )
-    } else {
-      // If no target, move forward normally
-      projectile.position.add(
-        projectile.userData.direction
-          .clone()
-          .multiplyScalar(this.projectileSpeed)
-      )
-    }
-  }
-
-  private findNearestEnemy(
-    projectile: THREE.Mesh,
-    enemyManager: EnemyManager
-  ): void {
-    const enemies = enemyManager.getEnemies()
-    let nearestEnemy = null
-    let nearestDistance = Infinity
-
-    enemies.forEach((enemy: { mesh: THREE.Mesh }) => {
-      const distance = projectile.position.distanceTo(enemy.mesh.position)
-      if (distance < nearestDistance) {
-        nearestDistance = distance
-        nearestEnemy = enemy
-      }
-    })
-    projectile.userData.targetEnemy = nearestEnemy
   }
 
   private isOutOfBounds(projectile: THREE.Mesh): boolean {
