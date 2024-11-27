@@ -19,6 +19,7 @@ interface GameState {
   hasSpeedBoost: boolean
   homingEnabled: boolean
   weaponScore: number
+  weaponTier: 1 | 2 | 3
   setPaused: (paused: boolean) => void
   setCredits: (credits: number | ((prev: number) => number)) => void
   incrementCredits: () => void
@@ -65,6 +66,7 @@ export const useGameStore = create<GameState>((set) => ({
   hasSpeedBoost: false,
   homingEnabled: true,
   weaponScore: 0,
+  weaponTier: 1,
   setPaused: (paused) => set({ isPaused: paused }),
   setCredits: (credits) => set((state) => ({ 
     credits: typeof credits === 'function' ? credits(state.credits) : credits 
@@ -161,16 +163,19 @@ export const useGameStore = create<GameState>((set) => ({
   incrementWeaponScore: () => set((state) => {
     const newScore = state.weaponScore + 1;
     
-    // Reset fire rate at tier thresholds
-    if (newScore === 5 || newScore === 10) {
+    // First tier upgrade at 5
+    if (newScore === 5) {
       return { 
         weaponScore: newScore,
-        fireRate: 1000  // Reset to base fire rate at new tier
+        weaponTier: 2,
+        fireRate: 1000  // Reset fire rate
       };
     }
+    // Second tier upgrade at 20 (to be implemented)
     
     return { 
-      weaponScore: Math.min(newScore, 10)
+      weaponScore: newScore,
+      fireRate: state.fireRate * 0.95  // Still improve fire rate within tiers
     };
   }),
 }))

@@ -31,44 +31,34 @@ export class ProjectileManager {
   ): void {
     if (useGameStore.getState().isPaused) return;
 
-    const audioToPlay = isPoweredShot ? this.upgradedBulletAudio : this.bulletAudio;
+    const weaponTier = useGameStore.getState().weaponTier;
+    
+    // Play appropriate sound based on weapon tier
+    const audioToPlay = weaponTier === 2 ? this.upgradedBulletAudio : this.bulletAudio;
     audioToPlay.currentTime = 0;
     audioToPlay.play().catch(error => console.log("Audio play failed:", error));
 
     let geometry: THREE.BufferGeometry;
     let material: THREE.MeshStandardMaterial;
-    let projectileType: string;
-
-    // Get current attack speed from store
-    const currentAttackSpeed = useGameStore.getState().attackSpeed;
-
-    if (currentAttackSpeed <= this.BLUE_SPEED_THRESHOLD) {
-        // Third tier - Purple Star
-        geometry = new THREE.TetrahedronGeometry(0.4);
-        material = new THREE.MeshStandardMaterial({
-            color: 0x9932CC,
-            emissive: 0x9932CC,
-            emissiveIntensity: 0.8
-        });
-        projectileType = 'purple';
-    } else if (currentAttackSpeed <= this.YELLOW_SPEED_THRESHOLD) {
-        // Second tier - Blue Diamond
+    
+    if (weaponTier === 2) {
+        // Yellow Diamond (Tier 2)
         geometry = new THREE.OctahedronGeometry(0.3);
         material = new THREE.MeshStandardMaterial({
-            color: 0x00ffff,
-            emissive: 0x00ffff,
-            emissiveIntensity: 0.6
+            color: 0xffff00,
+            emissive: 0xffff00,
+            emissiveIntensity: 0.6,
+            metalness: 0.7,
+            roughness: 0.2
         });
-        projectileType = 'blue';
     } else {
-        // First tier - Basic Projectile
-        geometry = new THREE.SphereGeometry(isPoweredShot ? 0.3 : 0.2);
+        // Red Sphere (Tier 1)
+        geometry = new THREE.SphereGeometry(0.2);
         material = new THREE.MeshStandardMaterial({
-            color: isPoweredShot ? 0xffff00 : 0xff0000,
-            emissive: isPoweredShot ? 0xffff00 : 0xff0000,
-            emissiveIntensity: isPoweredShot ? 0.5 : 0.2
+            color: 0xff0000,
+            emissive: 0xff0000,
+            emissiveIntensity: 0.2
         });
-        projectileType = 'yellow';
     }
 
     const projectile = new THREE.Mesh(geometry, material);
@@ -76,7 +66,7 @@ export class ProjectileManager {
     projectile.position.y += 0.5;
 
     // Add rotation speeds for upgraded projectiles
-    const rotationSpeed = projectileType !== 'yellow' ? {
+    const rotationSpeed = weaponTier !== 1 ? {
         x: Math.random() * 0.1,
         y: Math.random() * 0.1,
         z: Math.random() * 0.1
@@ -90,7 +80,7 @@ export class ProjectileManager {
         ).normalize(),
         isPowered: isPoweredShot,
         timeAlive: 0,
-        projectileType,
+        projectileType: weaponTier === 2 ? 'yellow' : 'red',
         rotationSpeed,
         yVelocity: this.PROJECTILE_INITIAL_Y_VELOCITY
     };
@@ -128,8 +118,7 @@ export class ProjectileManager {
         }
 
         // Calculate damage based on projectile type
-        const damage = projectile.userData.projectileType === 'purple' ? 3 :
-                      projectile.userData.projectileType === 'blue' ? 2 : 1;
+        const damage = projectile.userData.projectileType === 'yellow' ? 3 : 1;
 
         // Check collisions
         if (enemyManager.handleProjectileCollision(projectile.position, projectile.userData.isPowered, damage)) {

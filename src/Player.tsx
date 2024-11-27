@@ -9,20 +9,28 @@ export class Player {
     private damageFlashTime: number = 0
     private readonly FLASH_DURATION = 200
     private originalColor: number = 0x888888
-    private baseSpeed: number
-    private baseMaxSpeed: number
-    private baseAcceleration: number
-    private maxJumps: number
+    private readonly BASE_MOVEMENT_SPEED = 0.3
+    private readonly BASE_ROTATION_SPEED = 0.05
 
     constructor(scene: THREE.Scene, hasSpeedBoost: boolean, initialMaxJumps: number) {
         this.maxJumps = initialMaxJumps
         
-        // Base movement values
-        this.baseSpeed = 0.2
-        this.baseMaxSpeed = 0.3
-        this.baseAcceleration = 0.01
+        // Initialize movement with fixed values
+        this.movement = {
+            rotation: 0,
+            speed: 0,
+            strafeSpeed: this.BASE_MOVEMENT_SPEED,
+            rotationSpeed: this.BASE_ROTATION_SPEED,
+            maxSpeed: this.BASE_MOVEMENT_SPEED,
+            acceleration: 0.01,
+            deceleration: 0.01,
+            jumpForce: 0.15,
+            verticalVelocity: 0,
+            gravity: 0.006,
+            isGrounded: false
+        }
 
-        // Create player cube
+        // Create player mesh
         const cubeGeometry = new THREE.BoxGeometry(1, 1, 1)
         const cubeMaterial = new THREE.MeshStandardMaterial({ 
             color: this.originalColor,
@@ -34,21 +42,10 @@ export class Player {
         this.mesh.castShadow = true
         scene.add(this.mesh)
 
-        // Initialize movement with speed boost if available
-        const speedMultiplier = hasSpeedBoost ? 1.5 : 1.0
-        
-        this.movement = {
-            rotation: 0,
-            speed: 0,
-            strafeSpeed: this.baseSpeed * speedMultiplier,
-            rotationSpeed: 0.05,
-            maxSpeed: this.baseMaxSpeed * speedMultiplier,
-            acceleration: this.baseAcceleration * speedMultiplier,
-            deceleration: 0.01,
-            jumpForce: 0.15,
-            verticalVelocity: 0,
-            gravity: 0.006,
-            isGrounded: false
+        // Apply speed boost if available
+        if (hasSpeedBoost) {
+            this.movement.maxSpeed *= 1.5
+            this.movement.strafeSpeed *= 1.5
         }
 
         this.state = {
