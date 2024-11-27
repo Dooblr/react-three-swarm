@@ -1,8 +1,11 @@
 import { FC } from 'react'
+import { SpaceEnvironment } from './SpaceEnvironment'
 
 export const Scene: FC = () => {
   return (
     <>
+      <SpaceEnvironment />
+      
       {/* Lights */}
       <ambientLight intensity={0.3} />
       <directionalLight
@@ -15,7 +18,13 @@ export const Scene: FC = () => {
       {/* Ground plane */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[50, 50]} />
-        <meshStandardMaterial color="#303030" />
+        <meshStandardMaterial 
+          color="#303030" 
+          transparent
+          opacity={0.6}
+          roughness={0.7}
+          metalness={0.5}
+        />
       </mesh>
     </>
   )
