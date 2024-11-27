@@ -12,8 +12,15 @@ export class Enemy2 {
     private readonly FLASH_DURATION = 200
     private readonly SIZE = 2
     private readonly SPIKE_COUNT = 15  // Number of spikes
+    private scene: THREE.Scene
+    private readonly LASER_SPEED = 0.8
+    private readonly LASER_COLOR = 0xff0000
+    private lastShotTime: number = 0
+    private readonly SHOT_DELAY = 1000  // Fire every 1 second (increased frequency)
+    private activeLasers: THREE.Line[] = []
 
     constructor(scene: THREE.Scene, position: THREE.Vector3) {
+        this.scene = scene  // Store scene reference
         this.mesh = new THREE.Group()
         
         // Create main sphere
@@ -52,6 +59,9 @@ export class Enemy2 {
         this.mesh.position.copy(position)
         this.mesh.position.y = this.SIZE / 2
         scene.add(this.mesh)
+
+        // Initialize lastShotTime to ensure first shot happens immediately
+        this.lastShotTime = Date.now() - this.SHOT_DELAY
     }
 
     update(playerPosition: THREE.Vector3) {
@@ -77,6 +87,102 @@ export class Enemy2 {
 
         // Rotate towards player
         this.mesh.lookAt(playerPosition)
+
+        // Fire new laser
+        const currentTime = Date.now()
+        if (currentTime - this.lastShotTime > this.SHOT_DELAY) {
+            this.shootLaser(playerPosition)
+            this.lastShotTime = currentTime
+        }
+
+        // Update active lasers and check for player collision
+        for (let i = this.activeLasers.length - 1; i >= 0; i--) {
+            const laser = this.activeLasers[i]
+            const positions = laser.geometry.attributes.position.array as Float32Array
+            
+            // Move laser forward
+            for (let j = 0; j < 6; j += 3) {
+                positions[j] += laser.userData.direction.x * this.LASER_SPEED
+                positions[j + 1] += laser.userData.direction.y * this.LASER_SPEED
+                positions[j + 2] += laser.userData.direction.z * this.LASER_SPEED
+            }
+            
+            laser.geometry.attributes.position.needsUpdate = true
+            laser.userData.distanceTraveled += this.LASER_SPEED
+
+            // Get laser position (using first point of the line)
+            const laserPosition = new THREE.Vector3(
+                positions[0],
+                positions[1],
+                positions[2]
+            )
+
+            // Check for player collision
+            const distanceToPlayer = laserPosition.distanceTo(playerPosition)
+            if (distanceToPlayer < 1) { // Collision radius of 1 unit
+                useGameStore.getState().decrementHealth()
+                this.scene.remove(laser)
+                this.activeLasers.splice(i, 1)
+                continue
+            }
+
+            // Remove laser after traveling certain distance
+            if (laser.userData.distanceTraveled > 50) {
+                this.scene.remove(laser)
+                this.activeLasers.splice(i, 1)
+            }
+        }
+    }
+
+    private shootLaser(playerPosition: THREE.Vector3): void {
+        // Create laser geometry
+        const geometry = new THREE.BufferGeometry()
+        const positions = new Float32Array(6)  // Two points (x,y,z) each
+        
+        // Calculate direction to player
+        const direction = new THREE.Vector3()
+            .subVectors(playerPosition, this.mesh.position)
+            .normalize()
+        
+        // Set initial positions with some length (2 units long)
+        positions[0] = this.mesh.position.x
+        positions[1] = this.mesh.position.y
+        positions[2] = this.mesh.position.z
+        positions[3] = this.mesh.position.x + direction.x * 2
+        positions[4] = this.mesh.position.y + direction.y * 2
+        positions[5] = this.mesh.position.z + direction.z * 2
+        
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+
+        // Create laser material with enhanced appearance
+        const material = new THREE.LineBasicMaterial({ 
+            color: 0xff0000,  // Pure red
+            linewidth: 3,     // Thicker line
+            transparent: true,
+            opacity: 1,       // Full opacity
+        })
+
+        // Create laser beam
+        const laser = new THREE.Line(geometry, material)
+        
+        // Add glow effect
+        const glowMaterial = new THREE.LineBasicMaterial({
+            color: 0xff3333,  // Lighter red for glow
+            linewidth: 6,     // Thicker for glow effect
+            transparent: true,
+            opacity: 0.5      // More visible glow
+        })
+        const glowLine = new THREE.Line(geometry.clone(), glowMaterial)
+        laser.add(glowLine)   // Add glow as child of main laser
+        
+        // Store direction in userData for movement
+        laser.userData = {
+            direction: direction,
+            distanceTraveled: 0
+        }
+
+        this.scene.add(laser)
+        this.activeLasers.push(laser)
     }
 
     takeDamage(): boolean {
@@ -95,6 +201,11 @@ export class Enemy2 {
     }
 
     cleanup(scene: THREE.Scene) {
+        // Clean up all active lasers
+        this.activeLasers.forEach(laser => {
+            scene.remove(laser)
+        })
+        this.activeLasers = []
         scene.remove(this.mesh)
     }
 } 

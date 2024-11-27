@@ -81,6 +81,29 @@ export class EnemyManager {
     this.player.takeDamage()
     useGameStore.getState().decrementHealth()
 
+    // Check for laser collision if it's Enemy2
+    if (enemy instanceof Enemy2 && enemy.laserBeam) {
+        const laserStart = enemy.laserBeam.geometry.attributes.position.array as Float32Array
+        const laserEnd = enemy.laserBeam.geometry.attributes.position.array as Float32Array
+        const laserDirection = new THREE.Vector3()
+            .subVectors(new THREE.Vector3(laserEnd[3], laserEnd[4], laserEnd[5]), new THREE.Vector3(laserStart[0], laserStart[1], laserStart[2]))
+            .normalize()
+        const laserLength = laserDirection.length()
+
+        const playerPosition = this.player.mesh.position
+        const playerRadius = 0.5
+        const playerDirection = new THREE.Vector3()
+            .subVectors(playerPosition, new THREE.Vector3(laserStart[0], laserStart[1], laserStart[2]))
+            .normalize()
+        const playerDistance = playerDirection.length()
+
+        if (playerDistance < playerRadius + 0.5) {
+            // 0.5 is player radius
+            this.player.takeDamage()
+            useGameStore.getState().decrementHealth()
+        }
+    }
+
     this.handleEnemyDeath(enemy, enemy.mesh.position.clone())
     enemy.cleanup(this.scene)
     this.enemies.splice(index, 1)
