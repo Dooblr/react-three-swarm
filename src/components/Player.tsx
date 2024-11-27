@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { useKeyboard } from '../hooks/useKeyboard'
 import { PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
+import { useGameAudio } from '../hooks/useGameAudio'
 
 export const Player: FC = () => {
   const meshRef = useRef<THREE.Mesh>(null)
@@ -15,6 +16,7 @@ export const Player: FC = () => {
   const lastJumpPressed = useRef(false)
 
   const { forward, backward, left, right, strafeLeft, strafeRight, jump } = useKeyboard()
+  const { playJumpSound, playDoubleJumpSound, playLandingSound } = useGameAudio()
 
   useFrame(() => {
     if (!meshRef.current || !cameraRef.current) return
@@ -33,17 +35,22 @@ export const Player: FC = () => {
       // First jump from ground
       if (meshRef.current.position.y <= 1) {
         velocity.current.y = jumpForce
+        playJumpSound()
       }
       // Second jump in air
       else if (!hasDoubleJumped.current) {
         velocity.current.y = jumpForce
         hasDoubleJumped.current = true
+        playDoubleJumpSound()
       }
     }
     lastJumpPressed.current = jump
 
     // Reset jump state when landing
     if (meshRef.current.position.y <= 1 && velocity.current.y <= 0) {
+      if (velocity.current.y < -0.1) { // Only play landing sound if falling with some speed
+        playLandingSound()
+      }
       meshRef.current.position.y = 1
       velocity.current.y = 0
       hasDoubleJumped.current = false
