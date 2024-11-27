@@ -1,14 +1,20 @@
-import { FC, useRef } from 'react'
+import { FC, useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboard } from '../hooks/useKeyboard'
 import { PerspectiveCamera } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameAudio } from '../hooks/useGameAudio'
+import { useProjectiles } from '../hooks/useProjectiles'
+
+const MIN_ZOOM = 4
+const MAX_ZOOM = 8
+const ZOOM_SPEED = 0.5
 
 export const Player: FC = () => {
   const meshRef = useRef<THREE.Mesh>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera>(null)
   const velocity = useRef(new THREE.Vector3())
+  const cameraDistance = useRef(6)
   const speed = 0.1
   const jumpForce = 0.3
   const gravity = 0.01
@@ -17,6 +23,44 @@ export const Player: FC = () => {
 
   const { forward, backward, left, right, strafeLeft, strafeRight, jump } = useKeyboard()
   const { playJumpSound, playDoubleJumpSound, playLandingSound } = useGameAudio()
+  const { spawnPlayerProjectile } = useProjectiles()
+
+  const shoot = () => {
+    if (!meshRef.current) return
+    
+    const direction = new THREE.Vector3()
+    meshRef.current.getWorldDirection(direction)
+    
+    const spawnPosition = meshRef.current.position.clone()
+      .add(direction.multiplyScalar(1.5)) // Spawn in front of player
+      .add(new THREE.Vector3(0, 1, 0)) // Adjust height
+
+    spawnPlayerProjectile(spawnPosition, direction)
+    // Play shoot sound here
+  }
+
+  useEffect(() => {
+    const handleShoot = (e: KeyboardEvent) => {
+      if (e.code === 'Space') shoot()
+    }
+
+    window.addEventListener('keydown', handleShoot)
+    return () => window.removeEventListener('keydown', handleShoot)
+  }, [])
+
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const zoomDelta = Math.sign(e.deltaY) * ZOOM_SPEED
+      cameraDistance.current = THREE.MathUtils.clamp(
+        cameraDistance.current + zoomDelta,
+        MIN_ZOOM,
+        MAX_ZOOM
+      )
+    }
+
+    window.addEventListener('wheel', handleWheel)
+    return () => window.removeEventListener('wheel', handleWheel)
+  }, [])
 
   useFrame(() => {
     if (!meshRef.current || !cameraRef.current) return
@@ -80,8 +124,8 @@ export const Player: FC = () => {
     meshRef.current.position.z += horizontalMovement.z
     meshRef.current.position.y += velocity.current.y
 
-    // Update camera position
-    const cameraOffset = new THREE.Vector3(0, 3, 6)
+    // Update camera position with zoom
+    const cameraOffset = new THREE.Vector3(0, 3, cameraDistance.current)
     const cameraPosition = meshRef.current.position.clone()
       .add(cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), meshRef.current.rotation.y))
     
